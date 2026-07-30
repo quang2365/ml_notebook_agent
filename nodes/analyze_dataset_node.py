@@ -1,11 +1,16 @@
 from langchain_core.messages import AIMessage,HumanMessage,SystemMessage
 from state import State
 from model.model import llm
-from langchain.agents import create_agent
 def analyze_dataset_note(state:State) -> dict:
+    # bản phân tích đầy đủ dataset
     dataset_summary = state.get("summary")
+    # bản phân tích tóm tắt
+    analys_context = dataset_summary.get('analysis_context')
+    if not dataset_summary:
+        return {"error":" Tôi không nhận được bản tóm tắt của Dataset",
+                "messages": AIMessage(content = "Tôi không nhận được bản tóm tắt của Dataset")}
     system_prompt = """
-    "Bạn là một chuyên gia tóm tắt và phân tích dữ liêu.
+    Bạn là một chuyên gia tóm tắt và phân tích dữ liêu.
     bạn sẽ được cung cấp các dữ liệu liên quan đến dataset hãy tóm tắt nội dung ấy cho người dùng
     chỉ trình bày từ các thông tin được cung cấp, không bịa hay suy luận.
     
@@ -34,14 +39,12 @@ def analyze_dataset_note(state:State) -> dict:
     message=f"""Bạn là một Data Scientist.
 
                     Đây là thông tin dataset:
-                    {dataset_summary}"""
-    if not dataset_summary:
-        return {"error":" Tôi không nhận được bản tóm tắt của Dataset",
-                "messages": AIMessage(content = "Tôi không nhận được bản tóm tắt của Dataset")}
+                    {analys_context}"""
+
     try:
-        result = llm.invoke([HumanMessage(message),SystemMessage(content= system_prompt)])
+        result = llm.invoke([SystemMessage(content= system_prompt),HumanMessage(message)])
         return {
-            "messages":[AIMessage(content=result.content)],
+            "messages": [result],
             "summary_llm": result.content
         }
     except Exception as exc:

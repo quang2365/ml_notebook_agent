@@ -16,6 +16,7 @@ def inspect_dataset_note(state:State)-> dict:
             {
                 "file_path":dataset_path
             })
+        analysis_context = summary.get('analysis_context')
         message = (
             "## Đã đọc dataset thành công\n\n"
             f"- **Tên file:** {summary['file_name']}\n"
