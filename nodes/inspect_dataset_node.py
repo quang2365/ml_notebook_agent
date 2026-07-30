@@ -16,11 +16,19 @@ def inspect_dataset_note(state:State)-> dict:
             {
                 "file_path":dataset_path
             })
-        message = (f"tên của file là {summary['file_name']}"
-                   f"số dòng: {summary['rows']}"
-                   f"số cột: {summary['columns']}")
+        message = ("## Đã đọc dataset thành công\n\n"
+            f"- **Tên file:** {summary['file_name']}\n"
+            f"- **Số dòng:** {summary['rows']:,}\n"
+            f"- **Số cột:** {summary['columns']}\n"
+            f"- **Cột số:** "
+            f"{len(summary['numeric_columns'])}\n"
+            f"- **Cột phân loại:** "
+            f"{len(summary['categorical_columns'])}\n"
+            f"- **Giá trị thiếu:** {summary['total_missing_values']:,}\n"
+            f"- **Dòng trùng lặp:** "
+            f"{summary['duplicate_rows']:,}")
         return {
-            "messages": [AIMessage(content=f"đây là bản tóm tắt của dataset {message}")],
+            "messages": [AIMessage(content=f"đây là bản tóm tắt của dataset \n {message}")],
             "summary": summary,
             "dataset_path": dataset_path
         }
