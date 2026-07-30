@@ -9,20 +9,24 @@ import pandas as pd
 from langchain_core.tools import tool
 
 
-def _json_safe(value: Any) -> Any:
+# =========================================================
+# CÁC HÀM HỖ TRỢ
+# =========================================================
+
+def json_safe(value: Any) -> Any:
     """
-    Chuyển dữ liệu pandas/numpy thành kiểu dữ liệu Python
+    Chuyển dữ liệu pandas/numpy thành kiểu Python
     có thể serialize sang JSON.
     """
 
     if isinstance(value, dict):
         return {
-            str(key): _json_safe(item)
+            str(key): json_safe(item)
             for key, item in value.items()
         }
 
     if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
+        return [json_safe(item) for item in value]
 
     if value is pd.NA:
         return None
@@ -37,10 +41,12 @@ def _json_safe(value: Any) -> Any:
         if math.isnan(value) or math.isinf(value):
             return None
 
+        return round(value, 6)
+
     return value
 
 
-def _read_csv_with_encoding(
+def read_csv_with_encoding(
     file_path: Path,
     delimiter: str,
 ) -> tuple[pd.DataFrame, str]:
@@ -60,8 +66,8 @@ def _read_csv_with_encoding(
         try:
             dataframe = pd.read_csv(
                 file_path,
-                encoding=encoding,
                 sep=delimiter,
+                encoding=encoding,
                 low_memory=False,
             )
 
@@ -75,182 +81,706 @@ def _read_csv_with_encoding(
     ) from last_error
 
 
-def _build_numeric_summary(
+def build_column_overview(
+    dataframe: pd.DataFrame,
+) -> dict[str, dict[str, Any]]:
+    """
+    Thống kê tổng quan cho từng cột.
+    """
+
+    rows = len(dataframe)
+    result: dict[str, dict[str, Any]] = {}
+
+    for column in dataframe.columns:
+        missing_count = int(
+            dataframe[column].isna().sum()
+        )
+
+        unique_count = int(
+            dataframe[column].nunique(
+                dropna=True
+            )
+        )
+
+        result[str(column)] = {
+            "dtype": str(dataframe[column].dtype),
+            "missing_count": missing_count,
+            "missing_percentage": (
+                round(missing_count / rows * 100, 4)
+                if rows > 0
+                else 0.0
+            ),
+            "unique_count": unique_count,
+            "unique_percentage": (
+                round(unique_count / rows * 100, 4)
+                if rows > 0
+                else 0.0
+            ),
+        }
+
+    return result
+
+
+def build_numeric_profile(
     dataframe: pd.DataFrame,
     numeric_columns: list[str],
 ) -> dict[str, dict[str, Any]]:
     """
-    Tạo thống kê mô tả cho các cột số.
+    Thống kê mô tả, độ lệch và ngoại lệ
+    cho các cột số.
     """
 
     result: dict[str, dict[str, Any]] = {}
 
     for column in numeric_columns:
-        series = dataframe[column]
-
-        numeric_series = pd.to_numeric(
-            series,
+        original_series = pd.to_numeric(
+            dataframe[column],
             errors="coerce",
         )
 
+        non_null_original = (
+            original_series
+            .dropna()
+            .to_numpy(dtype=float)
+        )
+
+        infinite_count = int(
+            np.isinf(non_null_original).sum()
+        )
+
+        series = original_series.replace(
+            [np.inf, -np.inf],
+            np.nan,
+        )
+
+        valid_series = series.dropna()
+
+        if valid_series.empty:
+            result[column] = {
+                "count": 0,
+                "missing_count": int(
+                    dataframe[column].isna().sum()
+                ),
+                "infinite_count": infinite_count,
+                "unique_count": 0,
+                "mean": None,
+                "std": None,
+                "min": None,
+                "q1": None,
+                "median": None,
+                "q3": None,
+                "max": None,
+                "skewness": None,
+                "zero_count": 0,
+                "negative_count": 0,
+                "outlier_count_iqr": 0,
+                "outlier_percentage_iqr": 0.0,
+            }
+
+            continue
+
+        q1 = valid_series.quantile(0.25)
+        q3 = valid_series.quantile(0.75)
+        iqr = q3 - q1
+
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
+
+        outlier_mask = (
+            (valid_series < lower_bound)
+            | (valid_series > upper_bound)
+        )
+
+        outlier_count = int(
+            outlier_mask.sum()
+        )
+
         result[column] = {
-            "count": int(series.count()),
-            "missing": int(series.isna().sum()),
-            "unique": int(series.nunique(dropna=True)),
-            "mean": numeric_series.mean(),
-            "std": numeric_series.std(),
-            "min": numeric_series.min(),
-            "q1": numeric_series.quantile(0.25),
-            "median": numeric_series.median(),
-            "q3": numeric_series.quantile(0.75),
-            "max": numeric_series.max(),
-            "zero_count": int((numeric_series == 0).sum()),
-            "negative_count": int((numeric_series < 0).sum()),
-            "infinite_count": int(
-                np.isinf(numeric_series).sum()
+            "count": int(valid_series.count()),
+            "missing_count": int(
+                dataframe[column].isna().sum()
+            ),
+            "infinite_count": infinite_count,
+            "unique_count": int(
+                valid_series.nunique()
+            ),
+            "mean": valid_series.mean(),
+            "std": valid_series.std(),
+            "min": valid_series.min(),
+            "q1": q1,
+            "median": valid_series.median(),
+            "q3": q3,
+            "max": valid_series.max(),
+            "skewness": valid_series.skew(),
+            "zero_count": int(
+                (valid_series == 0).sum()
+            ),
+            "negative_count": int(
+                (valid_series < 0).sum()
+            ),
+            "iqr": iqr,
+            "lower_outlier_bound": lower_bound,
+            "upper_outlier_bound": upper_bound,
+            "outlier_count_iqr": outlier_count,
+            "outlier_percentage_iqr": round(
+                outlier_count
+                / len(valid_series)
+                * 100,
+                4,
             ),
         }
 
-    return _json_safe(result)
+    return json_safe(result)
 
 
-def _build_categorical_summary(
+def build_categorical_profile(
     dataframe: pd.DataFrame,
     categorical_columns: list[str],
     max_categories: int,
 ) -> dict[str, dict[str, Any]]:
     """
-    Tạo thống kê cho các cột phân loại.
+    Thống kê phân bố cho các cột phân loại.
     """
 
     result: dict[str, dict[str, Any]] = {}
 
-    total_rows = len(dataframe)
-
     for column in categorical_columns:
         series = dataframe[column]
-
-        unique_count = int(
-            series.nunique(dropna=True)
+        non_null_series = (
+            series.dropna().astype(str)
         )
 
-        top_values = []
+        value_counts = (
+            non_null_series.value_counts()
+        )
+
+        total_non_null = len(
+            non_null_series
+        )
+
+        top_values: list[dict[str, Any]] = []
 
         for value, count in (
-            series.value_counts(dropna=True)
+            value_counts
             .head(max_categories)
             .items()
         ):
             top_values.append(
                 {
-                    "value": _json_safe(value),
+                    "value": str(value)[:200],
                     "count": int(count),
-                    "percentage": round(
-                        count / total_rows * 100,
-                        2,
-                    )
-                    if total_rows > 0
-                    else 0.0,
+                    "percentage": (
+                        round(
+                            count
+                            / total_non_null
+                            * 100,
+                            4,
+                        )
+                        if total_non_null > 0
+                        else 0.0
+                    ),
                 }
             )
 
+        blank_count = int(
+            non_null_series
+            .str.strip()
+            .eq("")
+            .sum()
+        )
+
+        whitespace_count = int(
+            (
+                non_null_series
+                != non_null_series.str.strip()
+            ).sum()
+        )
+
+        rare_threshold = max(
+            1,
+            int(total_non_null * 0.01),
+        )
+
+        rare_category_count = int(
+            (value_counts <= rare_threshold).sum()
+        )
+
+        mode_value = (
+            str(value_counts.index[0])
+            if not value_counts.empty
+            else None
+        )
+
+        mode_count = (
+            int(value_counts.iloc[0])
+            if not value_counts.empty
+            else 0
+        )
+
         result[column] = {
-            "count": int(series.count()),
-            "missing": int(series.isna().sum()),
-            "unique": unique_count,
-            "unique_percentage": round(
-                unique_count / total_rows * 100,
-                2,
-            )
-            if total_rows > 0
-            else 0.0,
+            "count": total_non_null,
+            "missing_count": int(
+                series.isna().sum()
+            ),
+            "unique_count": int(
+                series.nunique(dropna=True)
+            ),
+            "mode": mode_value,
+            "mode_count": mode_count,
+            "mode_percentage": (
+                round(
+                    mode_count
+                    / total_non_null
+                    * 100,
+                    4,
+                )
+                if total_non_null > 0
+                else 0.0
+            ),
+            "blank_string_count": blank_count,
+            "whitespace_value_count": (
+                whitespace_count
+            ),
+            "rare_category_count": (
+                rare_category_count
+            ),
             "top_values": top_values,
         }
 
-    return _json_safe(result)
+    return json_safe(result)
 
 
-def _find_target_hints(
+def build_top_correlations(
     dataframe: pd.DataFrame,
-) -> dict[str, Any]:
+    numeric_columns: list[str],
+    max_pairs: int,
+) -> list[dict[str, Any]]:
     """
-    Chỉ đưa ra gợi ý target dựa trên tên cột.
-
-    Đây không phải kết luận cuối cùng.
+    Trả về các cặp cột số có tương quan Pearson
+    mạnh nhất theo trị tuyệt đối.
     """
 
-    target_keywords = [
+    if len(numeric_columns) < 2:
+        return []
+
+    numeric_dataframe = (
+        dataframe[numeric_columns]
+        .replace([np.inf, -np.inf], np.nan)
+    )
+
+    correlation_matrix = (
+        numeric_dataframe.corr(
+            method="pearson"
+        )
+    )
+
+    pairs: list[dict[str, Any]] = []
+
+    for first_index, first_column in enumerate(
+        numeric_columns
+    ):
+        for second_column in numeric_columns[
+            first_index + 1:
+        ]:
+            correlation = correlation_matrix.loc[
+                first_column,
+                second_column,
+            ]
+
+            if pd.isna(correlation):
+                continue
+
+            pairs.append(
+                {
+                    "column_1": first_column,
+                    "column_2": second_column,
+                    "correlation": float(
+                        correlation
+                    ),
+                    "absolute_correlation": abs(
+                        float(correlation)
+                    ),
+                }
+            )
+
+    pairs.sort(
+        key=lambda item: item[
+            "absolute_correlation"
+        ],
+        reverse=True,
+    )
+
+    return json_safe(
+        pairs[:max_pairs]
+    )
+
+
+def detect_target_candidates(
+    dataframe: pd.DataFrame,
+    possible_id_columns: list[str],
+) -> list[dict[str, Any]]:
+    """
+    Gợi ý target dựa trên tên và đặc điểm cột.
+
+    Đây chỉ là gợi ý, không phải kết luận.
+    """
+
+    exact_keywords = {
         "target",
         "label",
         "class",
         "outcome",
         "response",
+        "y",
+    }
+
+    partial_keywords = {
         "price",
         "value",
+        "sales",
+        "revenue",
         "default",
         "fraud",
         "churn",
-        "sales",
-    ]
+        "risk",
+        "score",
+        "status",
+        "result",
+    }
 
-    candidates = []
+    candidates: list[dict[str, Any]] = []
+    rows = len(dataframe)
 
-    for column in dataframe.columns:
+    for index, column in enumerate(
+        dataframe.columns
+    ):
+        column_name = str(column)
         normalized_name = (
-            str(column)
-            .lower()
+            column_name
             .strip()
+            .lower()
             .replace(" ", "_")
         )
 
-        matched_keywords = [
+        unique_count = int(
+            dataframe[column].nunique(
+                dropna=True
+            )
+        )
+
+        if unique_count <= 1:
+            continue
+
+        score = 0
+        reasons: list[str] = []
+
+        if normalized_name in exact_keywords:
+            score += 5
+            reasons.append(
+                "Tên cột trùng từ khóa target."
+            )
+
+        matched_partial = [
             keyword
-            for keyword in target_keywords
+            for keyword in partial_keywords
             if keyword in normalized_name
         ]
 
-        if matched_keywords:
+        if matched_partial:
+            score += 3
+            reasons.append(
+                "Tên cột chứa từ khóa: "
+                + ", ".join(matched_partial)
+            )
+
+        if index == len(dataframe.columns) - 1:
+            score += 1
+            reasons.append(
+                "Đây là cột cuối dataset."
+            )
+
+        if column_name in possible_id_columns:
+            score -= 5
+            reasons.append(
+                "Cột có đặc điểm giống ID."
+            )
+
+        is_numeric = pd.api.types.is_numeric_dtype(
+            dataframe[column]
+        )
+
+        unique_ratio = (
+            unique_count / rows
+            if rows > 0
+            else 0.0
+        )
+
+        if is_numeric and unique_count > 20:
+            suggested_problem_type = "regression"
+
+        elif unique_count <= 20:
+            suggested_problem_type = (
+                "classification"
+            )
+
+        else:
+            suggested_problem_type = (
+                "unknown"
+            )
+
+        if score > 0:
             candidates.append(
                 {
-                    "column": str(column),
-                    "matched_keywords": matched_keywords,
-                    "dtype": str(dataframe[column].dtype),
-                    "unique_values": int(
-                        dataframe[column].nunique(
-                            dropna=True
+                    "column": column_name,
+                    "score": score,
+                    "dtype": str(
+                        dataframe[column].dtype
+                    ),
+                    "unique_count": unique_count,
+                    "unique_ratio": round(
+                        unique_ratio,
+                        6,
+                    ),
+                    "suggested_problem_type": (
+                        suggested_problem_type
+                    ),
+                    "reasons": reasons,
+                }
+            )
+
+    candidates.sort(
+        key=lambda item: item["score"],
+        reverse=True,
+    )
+
+    return candidates[:5]
+
+
+def build_target_analysis(
+    dataframe: pd.DataFrame,
+    target_column: str | None,
+    max_categories: int,
+) -> dict[str, Any] | None:
+    """
+    Phân tích target khi người dùng đã xác nhận target.
+    """
+
+    if target_column is None:
+        return None
+
+    if target_column not in dataframe.columns:
+        raise ValueError(
+            f"Không tìm thấy target column: "
+            f"{target_column}"
+        )
+
+    target = dataframe[target_column]
+    rows = len(dataframe)
+
+    unique_count = int(
+        target.nunique(dropna=True)
+    )
+
+    missing_count = int(
+        target.isna().sum()
+    )
+
+    is_numeric = pd.api.types.is_numeric_dtype(
+        target
+    )
+
+    if (
+        is_numeric
+        and unique_count
+        > max(20, int(rows * 0.01))
+    ):
+        problem_type = "regression"
+    else:
+        problem_type = "classification"
+
+    result: dict[str, Any] = {
+        "target_column": target_column,
+        "dtype": str(target.dtype),
+        "problem_type": problem_type,
+        "missing_count": missing_count,
+        "missing_percentage": (
+            round(
+                missing_count / rows * 100,
+                4,
+            )
+            if rows > 0
+            else 0.0
+        ),
+        "unique_count": unique_count,
+    }
+
+    if problem_type == "regression":
+        numeric_target = (
+            pd.to_numeric(
+                target,
+                errors="coerce",
+            )
+            .replace(
+                [np.inf, -np.inf],
+                np.nan,
+            )
+            .dropna()
+        )
+
+        result["distribution"] = {
+            "mean": numeric_target.mean(),
+            "std": numeric_target.std(),
+            "min": numeric_target.min(),
+            "q1": numeric_target.quantile(0.25),
+            "median": numeric_target.median(),
+            "q3": numeric_target.quantile(0.75),
+            "max": numeric_target.max(),
+            "skewness": numeric_target.skew(),
+        }
+
+        numeric_columns = (
+            dataframe.select_dtypes(
+                include=["number"]
+            )
+            .columns
+            .tolist()
+        )
+
+        target_correlations: list[
+            dict[str, Any]
+        ] = []
+
+        if target_column in numeric_columns:
+            correlation_series = (
+                dataframe[numeric_columns]
+                .replace(
+                    [np.inf, -np.inf],
+                    np.nan,
+                )
+                .corr()[target_column]
+                .drop(
+                    labels=[target_column],
+                    errors="ignore",
+                )
+                .dropna()
+            )
+
+            sorted_correlations = sorted(
+                correlation_series.items(),
+                key=lambda item: abs(item[1]),
+                reverse=True,
+            )
+
+            for column, correlation in (
+                sorted_correlations[:15]
+            ):
+                target_correlations.append(
+                    {
+                        "column": column,
+                        "correlation": float(
+                            correlation
+                        ),
+                    }
+                )
+
+        result["feature_correlations"] = (
+            target_correlations
+        )
+
+    else:
+        class_counts = (
+            target
+            .astype("string")
+            .fillna("<MISSING>")
+            .value_counts()
+        )
+
+        class_distribution = []
+
+        for value, count in (
+            class_counts
+            .head(max_categories)
+            .items()
+        ):
+            class_distribution.append(
+                {
+                    "class": str(value),
+                    "count": int(count),
+                    "percentage": (
+                        round(
+                            count
+                            / rows
+                            * 100,
+                            4,
                         )
+                        if rows > 0
+                        else 0.0
                     ),
                 }
             )
 
-    return {
-        "name_based_candidates": candidates,
-        "last_column": (
-            str(dataframe.columns[-1])
-            if len(dataframe.columns) > 0
-            else None
-        ),
-        "note": (
-            "Đây chỉ là gợi ý dựa trên tên cột. "
-            "Cần xác nhận mục tiêu thực tế với người dùng."
-        ),
-    }
+        minimum_class_count = (
+            int(class_counts.min())
+            if not class_counts.empty
+            else 0
+        )
 
+        maximum_class_count = (
+            int(class_counts.max())
+            if not class_counts.empty
+            else 0
+        )
+
+        imbalance_ratio = (
+            round(
+                maximum_class_count
+                / minimum_class_count,
+                4,
+            )
+            if minimum_class_count > 0
+            else None
+        )
+
+        result["class_distribution"] = (
+            class_distribution
+        )
+
+        result["imbalance_ratio"] = (
+            imbalance_ratio
+        )
+
+    return json_safe(result)
+
+
+# =========================================================
+# TOOL CHÍNH
+# =========================================================
 
 @tool
 def inspect_dataset(
     file_path: str,
+    target_column: str | None = None,
     preview_rows: int = 5,
     max_categories: int = 10,
     max_profile_columns: int = 50,
+    max_correlation_pairs: int = 15,
     delimiter: str = ",",
 ) -> dict[str, Any]:
     """
-    Đọc và kiểm tra tổng quan một file CSV.
+    Đọc và phân tích tổng quan một file CSV.
 
-    Tool trả về kích thước dữ liệu, kiểu cột, missing values,
-    duplicate rows, thống kê cột số, thống kê cột phân loại,
-    dữ liệu xem trước và các cảnh báo chất lượng dữ liệu.
+    Tool trả về:
+    - kích thước dataset;
+    - kiểu dữ liệu;
+    - missing values;
+    - duplicate rows;
+    - thống kê cột số;
+    - thống kê cột phân loại;
+    - outlier theo IQR;
+    - skewness;
+    - tương quan;
+    - ứng viên target;
+    - phân tích target nếu target_column được cung cấp.
     """
 
     path = Path(file_path)
@@ -262,7 +792,7 @@ def inspect_dataset(
 
     if not path.is_file():
         raise ValueError(
-            f"Đường dẫn không phải một file: {path}"
+            f"Đường dẫn không phải file: {path}"
         )
 
     if path.suffix.lower() != ".csv":
@@ -272,7 +802,8 @@ def inspect_dataset(
 
     if preview_rows < 0:
         raise ValueError(
-            "preview_rows phải lớn hơn hoặc bằng 0."
+            "preview_rows phải lớn hơn "
+            "hoặc bằng 0."
         )
 
     if max_categories <= 0:
@@ -287,7 +818,7 @@ def inspect_dataset(
 
     try:
         dataframe, encoding_used = (
-            _read_csv_with_encoding(
+            read_csv_with_encoding(
                 file_path=path,
                 delimiter=delimiter,
             )
@@ -295,50 +826,32 @@ def inspect_dataset(
 
     except pd.errors.EmptyDataError as exc:
         raise ValueError(
-            "File CSV không có dữ liệu."
+            "File CSV không chứa dữ liệu."
         ) from exc
 
     except pd.errors.ParserError as exc:
         raise ValueError(
-            f"Không thể phân tích cấu trúc CSV: {exc}"
+            "Không thể phân tích cấu trúc CSV: "
+            f"{exc}"
         ) from exc
 
     if dataframe.empty:
         raise ValueError(
-            "Dataset không có dòng dữ liệu nào."
+            "Dataset không có dòng dữ liệu."
         )
 
     rows, columns = dataframe.shape
 
     numeric_columns = (
-        dataframe.select_dtypes(
-            include=["number"]
-        )
-        .columns
-        .tolist()
-    )
-
-    boolean_columns = (
-        dataframe.select_dtypes(
-            include=["bool"]
-        )
-        .columns
-        .tolist()
-    )
-
-    datetime_columns = (
-        dataframe.select_dtypes(
-            include=[
-                "datetime",
-                "datetimetz",
-            ]
-        )
+        dataframe
+        .select_dtypes(include=["number"])
         .columns
         .tolist()
     )
 
     categorical_columns = (
-        dataframe.select_dtypes(
+        dataframe
+        .select_dtypes(
             include=[
                 "object",
                 "string",
@@ -350,25 +863,57 @@ def inspect_dataset(
         .tolist()
     )
 
+    boolean_columns = (
+        dataframe
+        .select_dtypes(include=["bool"])
+        .columns
+        .tolist()
+    )
+
+    datetime_columns = (
+        dataframe
+        .select_dtypes(
+            include=[
+                "datetime",
+                "datetimetz",
+            ]
+        )
+        .columns
+        .tolist()
+    )
+
     missing_values = (
-        dataframe.isna()
+        dataframe
+        .isna()
         .sum()
         .astype(int)
         .to_dict()
     )
 
     missing_percentages = (
-        dataframe.isna()
+        dataframe
+        .isna()
         .mean()
         .mul(100)
-        .round(2)
+        .round(4)
         .to_dict()
     )
 
-    unique_values = (
-        dataframe.nunique(dropna=True)
-        .astype(int)
-        .to_dict()
+    total_missing_values = int(
+        dataframe.isna().sum().sum()
+    )
+
+    total_cells = rows * columns
+
+    total_missing_percentage = (
+        round(
+            total_missing_values
+            / total_cells
+            * 100,
+            4,
+        )
+        if total_cells > 0
+        else 0.0
     )
 
     duplicate_rows = int(
@@ -377,17 +922,11 @@ def inspect_dataset(
 
     duplicate_percentage = round(
         duplicate_rows / rows * 100,
-        2,
+        4,
     )
 
-    all_missing_columns = [
-        column
-        for column in dataframe.columns
-        if dataframe[column].isna().all()
-    ]
-
     constant_columns = [
-        column
+        str(column)
         for column in dataframe.columns
         if dataframe[column].nunique(
             dropna=False
@@ -395,8 +934,14 @@ def inspect_dataset(
         <= 1
     ]
 
+    all_missing_columns = [
+        str(column)
+        for column in dataframe.columns
+        if dataframe[column].isna().all()
+    ]
+
     possible_id_columns = [
-        column
+        str(column)
         for column in dataframe.columns
         if (
             dataframe[column].nunique(
@@ -407,18 +952,25 @@ def inspect_dataset(
         )
     ]
 
-    high_cardinality_columns = [
-        column
-        for column in categorical_columns
-        if (
-            dataframe[column].nunique(
-                dropna=True
-            )
-            > 100
+    low_cardinality_numeric_columns = [
+        str(column)
+        for column in numeric_columns
+        if dataframe[column].nunique(
+            dropna=True
         )
+        <= 20
     ]
 
-    profile_columns = (
+    high_cardinality_columns = [
+        str(column)
+        for column in categorical_columns
+        if dataframe[column].nunique(
+            dropna=True
+        )
+        > max(50, int(rows * 0.2))
+    ]
+
+    profiled_columns = (
         dataframe.columns
         .tolist()[:max_profile_columns]
     )
@@ -426,22 +978,28 @@ def inspect_dataset(
     profiled_numeric_columns = [
         column
         for column in numeric_columns
-        if column in profile_columns
+        if column in profiled_columns
     ]
 
     profiled_categorical_columns = [
         column
         for column in categorical_columns
-        if column in profile_columns
+        if column in profiled_columns
     ]
 
-    numeric_summary = _build_numeric_summary(
-        dataframe=dataframe,
-        numeric_columns=profiled_numeric_columns,
+    column_overview = build_column_overview(
+        dataframe
     )
 
-    categorical_summary = (
-        _build_categorical_summary(
+    numeric_profile = build_numeric_profile(
+        dataframe=dataframe,
+        numeric_columns=(
+            profiled_numeric_columns
+        ),
+    )
+
+    categorical_profile = (
+        build_categorical_profile(
             dataframe=dataframe,
             categorical_columns=(
                 profiled_categorical_columns
@@ -450,144 +1008,357 @@ def inspect_dataset(
         )
     )
 
-    warnings: list[str] = []
+    top_correlations = (
+        build_top_correlations(
+            dataframe=dataframe,
+            numeric_columns=(
+                profiled_numeric_columns
+            ),
+            max_pairs=max_correlation_pairs,
+        )
+    )
 
-    missing_columns = [
-        column
+    target_candidates = (
+        detect_target_candidates(
+            dataframe=dataframe,
+            possible_id_columns=(
+                possible_id_columns
+            ),
+        )
+    )
+
+    target_analysis = build_target_analysis(
+        dataframe=dataframe,
+        target_column=target_column,
+        max_categories=max_categories,
+    )
+
+    quality_warnings: list[
+        dict[str, Any]
+    ] = []
+
+    columns_with_missing = {
+        column: count
         for column, count
         in missing_values.items()
         if count > 0
-    ]
+    }
 
-    if missing_columns:
-        warnings.append(
-            "Dataset có giá trị thiếu ở các cột: "
-            + ", ".join(missing_columns)
+    if columns_with_missing:
+        quality_warnings.append(
+            {
+                "type": "missing_values",
+                "severity": "warning",
+                "message": (
+                    "Dataset có giá trị thiếu."
+                ),
+                "columns": (
+                    columns_with_missing
+                ),
+            }
         )
 
     if duplicate_rows > 0:
-        warnings.append(
-            f"Dataset có {duplicate_rows} dòng trùng lặp."
+        quality_warnings.append(
+            {
+                "type": "duplicate_rows",
+                "severity": "warning",
+                "message": (
+                    f"Dataset có "
+                    f"{duplicate_rows} dòng trùng."
+                ),
+            }
         )
 
     if constant_columns:
-        warnings.append(
-            "Các cột chỉ có một giá trị: "
-            + ", ".join(constant_columns)
+        quality_warnings.append(
+            {
+                "type": "constant_columns",
+                "severity": "warning",
+                "message": (
+                    "Có cột chỉ chứa một giá trị."
+                ),
+                "columns": constant_columns,
+            }
         )
 
     if all_missing_columns:
-        warnings.append(
-            "Các cột bị thiếu toàn bộ dữ liệu: "
-            + ", ".join(all_missing_columns)
+        quality_warnings.append(
+            {
+                "type": "all_missing_columns",
+                "severity": "critical",
+                "message": (
+                    "Có cột bị thiếu toàn bộ."
+                ),
+                "columns": all_missing_columns,
+            }
+        )
+
+    if possible_id_columns:
+        quality_warnings.append(
+            {
+                "type": "possible_id_columns",
+                "severity": "info",
+                "message": (
+                    "Một số cột có tỷ lệ giá trị "
+                    "duy nhất rất cao và có thể "
+                    "là ID."
+                ),
+                "columns": possible_id_columns,
+            }
         )
 
     if high_cardinality_columns:
-        warnings.append(
-            "Các cột phân loại có cardinality cao: "
-            + ", ".join(high_cardinality_columns)
+        quality_warnings.append(
+            {
+                "type": "high_cardinality",
+                "severity": "warning",
+                "message": (
+                    "Có cột phân loại có "
+                    "cardinality cao."
+                ),
+                "columns": (
+                    high_cardinality_columns
+                ),
+            }
         )
 
-    if not warnings:
-        warnings.append(
-            "Chưa phát hiện vấn đề chất lượng dữ liệu "
-            "rõ ràng từ bước kiểm tra tổng quan."
+    high_skew_columns = [
+        column
+        for column, profile
+        in numeric_profile.items()
+        if (
+            profile.get("skewness") is not None
+            and abs(profile["skewness"]) >= 2
         )
+    ]
+
+    if high_skew_columns:
+        quality_warnings.append(
+            {
+                "type": "high_skewness",
+                "severity": "info",
+                "message": (
+                    "Một số cột có phân phối "
+                    "lệch mạnh."
+                ),
+                "columns": high_skew_columns,
+            }
+        )
+
+    high_outlier_columns = [
+        column
+        for column, profile
+        in numeric_profile.items()
+        if (
+            profile.get(
+                "outlier_percentage_iqr"
+            )
+            is not None
+            and profile[
+                "outlier_percentage_iqr"
+            ]
+            >= 5
+        )
+    ]
+
+    if high_outlier_columns:
+        quality_warnings.append(
+            {
+                "type": "many_iqr_outliers",
+                "severity": "info",
+                "message": (
+                    "Một số cột có ít nhất 5% "
+                    "giá trị nằm ngoài ngưỡng IQR."
+                ),
+                "columns": high_outlier_columns,
+            }
+        )
+
+    if not quality_warnings:
+        quality_warnings.append(
+            {
+                "type": "no_obvious_issue",
+                "severity": "info",
+                "message": (
+                    "Chưa phát hiện vấn đề rõ "
+                    "ràng ở bước kiểm tra tổng quan."
+                ),
+            }
+        )
+
+    preview = dataframe.head(
+        preview_rows
+    ).to_dict(orient="records")
 
     file_size_mb = round(
-        path.stat().st_size / (1024**2),
-        3,
+        path.stat().st_size
+        / (1024 ** 2),
+        4,
     )
 
     memory_usage_mb = round(
         dataframe.memory_usage(
             deep=True
         ).sum()
-        / (1024**2),
-        3,
+        / (1024 ** 2),
+        4,
     )
 
-    target_hints = _find_target_hints(
-        dataframe
-    )
-
-    preview = _json_safe(
-        dataframe.head(preview_rows).to_dict(
-            orient="records"
-        )
-    )
-
-    # Context ngắn gọn dành cho LLM.
-    # Không cần truyền toàn bộ summary nếu dataset có quá nhiều cột.
     analysis_context = {
-        "file_name": path.name,
-        "rows": rows,
-        "columns": columns,
-        "numeric_columns": numeric_columns,
-        "categorical_columns": categorical_columns,
-        "missing_values": {
-            column: count
-            for column, count
-            in missing_values.items()
-            if count > 0
+        "dataset_overview": {
+            "file_name": path.name,
+            "rows": rows,
+            "columns": columns,
+            "total_cells": total_cells,
+            "file_size_mb": file_size_mb,
+            "memory_usage_mb": (
+                memory_usage_mb
+            ),
         },
-        "duplicate_rows": duplicate_rows,
-        "constant_columns": constant_columns,
-        "target_hints": target_hints,
-        "quality_warnings": warnings,
-        "numeric_summary": numeric_summary,
-        "categorical_summary": categorical_summary,
+        "column_types": {
+            "numeric_columns": (
+                numeric_columns
+            ),
+            "categorical_columns": (
+                categorical_columns
+            ),
+            "boolean_columns": (
+                boolean_columns
+            ),
+            "datetime_columns": (
+                datetime_columns
+            ),
+        },
+        "data_quality": {
+            "total_missing_values": (
+                total_missing_values
+            ),
+            "total_missing_percentage": (
+                total_missing_percentage
+            ),
+            "columns_with_missing": (
+                columns_with_missing
+            ),
+            "duplicate_rows": (
+                duplicate_rows
+            ),
+            "constant_columns": (
+                constant_columns
+            ),
+            "possible_id_columns": (
+                possible_id_columns
+            ),
+            "quality_warnings": (
+                quality_warnings
+            ),
+        },
+        "numeric_profile": numeric_profile,
+        "categorical_profile": (
+            categorical_profile
+        ),
+        "top_correlations": (
+            top_correlations
+        ),
+        "target_candidates": (
+            target_candidates
+        ),
+        "target_analysis": target_analysis,
     }
 
     result = {
-        # Các key cũ được giữ lại để code hiện tại vẫn chạy.
+        # Các key cũ được giữ lại
         "file_name": path.name,
         "rows": rows,
         "columns": columns,
-        "column_names": dataframe.columns.tolist(),
+        "column_names": (
+            dataframe.columns.tolist()
+        ),
         "data_types": {
-            column: str(dtype)
+            str(column): str(dtype)
             for column, dtype
             in dataframe.dtypes.items()
         },
         "numeric_columns": numeric_columns,
-        "categorical_columns": categorical_columns,
+        "categorical_columns": (
+            categorical_columns
+        ),
 
-        # Thông tin mới.
-        "boolean_columns": boolean_columns,
-        "datetime_columns": datetime_columns,
+        # Metadata
+        "shape": [rows, columns],
+        "total_cells": total_cells,
         "encoding": encoding_used,
         "delimiter": delimiter,
         "file_size_mb": file_size_mb,
         "memory_usage_mb": memory_usage_mb,
+
+        # Missing và duplicate
         "missing_values": missing_values,
-        "missing_percentages": missing_percentages,
-        "total_missing_values": int(
-            dataframe.isna().sum().sum()
+        "missing_percentages": (
+            missing_percentages
+        ),
+        "total_missing_values": (
+            total_missing_values
+        ),
+        "total_missing_percentage": (
+            total_missing_percentage
         ),
         "duplicate_rows": duplicate_rows,
         "duplicate_percentage": (
             duplicate_percentage
         ),
-        "unique_values": unique_values,
+
+        # Kiểu và chất lượng cột
+        "boolean_columns": boolean_columns,
+        "datetime_columns": datetime_columns,
         "constant_columns": constant_columns,
-        "all_missing_columns": all_missing_columns,
-        "possible_id_columns": possible_id_columns,
+        "all_missing_columns": (
+            all_missing_columns
+        ),
+        "possible_id_columns": (
+            possible_id_columns
+        ),
+        "low_cardinality_numeric_columns": (
+            low_cardinality_numeric_columns
+        ),
         "high_cardinality_columns": (
             high_cardinality_columns
         ),
-        "numeric_summary": numeric_summary,
-        "categorical_summary": (
-            categorical_summary
+
+        # Phân tích chi tiết
+        "column_overview": column_overview,
+        "numeric_profile": numeric_profile,
+        "categorical_profile": (
+            categorical_profile
         ),
-        "target_hints": target_hints,
-        "quality_warnings": warnings,
+        "top_correlations": (
+            top_correlations
+        ),
+
+        # Target
+        "target_candidates": (
+            target_candidates
+        ),
+        "target_analysis": target_analysis,
+
+        # Cảnh báo và dữ liệu mẫu
+        "quality_warnings": (
+            quality_warnings
+        ),
         "preview": preview,
-        "profiled_columns": profile_columns,
+
+        # Thông tin profiling
+        "profiled_columns": (
+            profiled_columns
+        ),
         "profile_truncated": (
             columns > max_profile_columns
         ),
-        "analysis_context": analysis_context,
+
+        # Context rút gọn cho LLM
+        "analysis_context": (
+            analysis_context
+        ),
     }
 
-    return _json_safe(result)
+    return json_safe(result)

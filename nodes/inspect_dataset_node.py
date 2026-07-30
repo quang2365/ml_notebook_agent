@@ -16,17 +16,26 @@ def inspect_dataset_note(state:State)-> dict:
             {
                 "file_path":dataset_path
             })
-        message = ("## Đã đọc dataset thành công\n\n"
+        message = (
+            "## Đã đọc dataset thành công\n\n"
             f"- **Tên file:** {summary['file_name']}\n"
-            f"- **Số dòng:** {summary['rows']:,}\n"
-            f"- **Số cột:** {summary['columns']}\n"
+            f"- **Kích thước:** "
+            f"{summary['rows']:,} dòng × "
+            f"{summary['columns']} cột\n"
             f"- **Cột số:** "
             f"{len(summary['numeric_columns'])}\n"
             f"- **Cột phân loại:** "
             f"{len(summary['categorical_columns'])}\n"
-            f"- **Giá trị thiếu:** {summary['total_missing_values']:,}\n"
+            f"- **Giá trị thiếu:** "
+            f"{summary['total_missing_values']:,} "
+            f"({summary['total_missing_percentage']}%)\n"
             f"- **Dòng trùng lặp:** "
-            f"{summary['duplicate_rows']:,}")
+            f"{summary['duplicate_rows']:,}\n"
+            f"- **Cột có khả năng là ID:** "
+            f"{len(summary['possible_id_columns'])}\n"
+            f"- **Cột có phân phối lệch mạnh:** "
+            f"{len(summary['analysis_context']['data_quality']['quality_warnings'])}"
+)
         return {
             "messages": [AIMessage(content=f"đây là bản tóm tắt của dataset \n {message}")],
             "summary": summary,
