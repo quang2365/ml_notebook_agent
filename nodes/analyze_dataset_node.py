@@ -36,9 +36,7 @@ def analyze_dataset_note(state:State) -> dict:
         - Tương quan không đồng nghĩa với quan hệ nhân quả.
         - Trình bày bằng Markdown tiếng Việt
     """
-    message=f"""Bạn là một Data Scientist.
-
-                    Đây là thông tin dataset:
+    message=f"""Bạn là một Data Scientist. Đây là thông tin dataset:
                     {analys_context}"""
 
     try:

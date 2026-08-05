@@ -13,6 +13,186 @@ from langchain_core.tools import tool
 # CÁC HÀM HỖ TRỢ
 # =========================================================
 
+CLASSIFICATION_KEYWORDS = {
+    "class", "label", "category", "type", "status", "result",
+    "outcome", "default", "fraud", "churn", "approved", "target",
+}
+
+REGRESSION_KEYWORDS = {
+    "price", "value", "amount", "cost", "revenue", "income",
+    "salary", "sales", "temperature", "weight", "height", "duration",
+}
+
+ID_KEYWORDS = {
+    "id", "identifier", "uuid", "index",
+}
+
+
+def infer_problem_type(
+    dataframe: pd.DataFrame,
+    target_column: str,
+) -> dict[str, Any]:
+    """
+    Gợi ý loại bài toán từ kiểu dữ liệu, tên cột và số mức giá trị.
+
+    Kết quả chỉ là đề xuất và vẫn cần người dùng xác nhận.
+    """
+
+    if target_column not in dataframe.columns:
+        raise ValueError(
+            f"Không tìm thấy cột target: {target_column}"
+        )
+
+    target = dataframe[target_column].dropna()
+
+    if target.empty:
+        return {
+            "problem_type": "unknown",
+            "confidence": "low",
+            "reasons": ["Target không có dữ liệu hợp lệ."],
+        }
+
+    unique_count = int(target.nunique())
+    unique_ratio = unique_count / len(target)
+    normalized_name = (
+        target_column.strip().lower().replace(" ", "_")
+    )
+    name_tokens = set(normalized_name.split("_"))
+
+    base_result = {
+        "unique_count": unique_count,
+        "unique_ratio": round(unique_ratio, 6),
+    }
+
+    def result(
+        problem_type: str,
+        confidence: str,
+        reason: str,
+        classification_type: str | None = None,
+    ) -> dict[str, Any]:
+        output = {
+            **base_result,
+            "problem_type": problem_type,
+            "confidence": confidence,
+            "reasons": [reason],
+        }
+
+        if classification_type:
+            output["classification_type"] = classification_type
+
+        return output
+
+    # Cột gần như duy nhất và có tên giống ID.
+    if name_tokens & ID_KEYWORDS and unique_ratio >= 0.98:
+        return result(
+            "unknown",
+            "high",
+            "Cột có đặc điểm giống ID.",
+        )
+
+    # Boolean hoặc target chỉ có hai giá trị.
+    if pd.api.types.is_bool_dtype(target) or unique_count == 2:
+        return result(
+            "classification",
+            "high",
+            "Target chỉ có hai giá trị hoặc có kiểu Boolean.",
+            "binary",
+        )
+
+    # Chuỗi và category thường là nhãn phân loại.
+    if (
+        pd.api.types.is_object_dtype(target)
+        or pd.api.types.is_string_dtype(target)
+        or isinstance(target.dtype, pd.CategoricalDtype)
+    ):
+        return result(
+            "classification",
+            "high",
+            "Target có kiểu chuỗi hoặc phân loại.",
+            "multiclass",
+        )
+
+    # Ngày giờ cần xử lý riêng.
+    if pd.api.types.is_datetime64_any_dtype(target):
+        return result(
+            "unknown",
+            "low",
+            "Target có kiểu ngày giờ và cần được xác nhận thêm.",
+        )
+
+    if pd.api.types.is_numeric_dtype(target):
+        numeric_target = pd.to_numeric(
+            target,
+            errors="coerce",
+        ).dropna()
+
+        if numeric_target.empty:
+            return result(
+                "unknown",
+                "low",
+                "Không thể chuyển target thành dữ liệu số hợp lệ.",
+            )
+
+        has_class_keyword = any(
+            keyword in normalized_name
+            for keyword in CLASSIFICATION_KEYWORDS
+        )
+        has_regression_keyword = any(
+            keyword in normalized_name
+            for keyword in REGRESSION_KEYWORDS
+        )
+        integer_like = bool(
+            np.allclose(
+                numeric_target.to_numpy(dtype=float),
+                np.round(numeric_target.to_numpy(dtype=float)),
+            )
+        )
+        class_threshold = min(
+            50,
+            max(10, int(np.sqrt(len(dataframe)))),
+        )
+
+        if has_class_keyword:
+            return result(
+                "classification",
+                "high",
+                "Tên target chứa từ khóa thường dùng cho phân loại.",
+                "multiclass",
+            )
+
+        if (
+            integer_like
+            and unique_count <= class_threshold
+            and unique_ratio <= 0.05
+        ):
+            return result(
+                "classification",
+                "medium",
+                "Target là số nguyên nhưng chỉ có ít mức giá trị.",
+                "multiclass",
+            )
+
+        if has_regression_keyword:
+            return result(
+                "regression",
+                "high",
+                "Tên target biểu diễn một đại lượng liên tục.",
+            )
+
+        return result(
+            "regression",
+            "medium",
+            "Target là dữ liệu số với nhiều giá trị khác nhau.",
+        )
+
+    return result(
+        "unknown",
+        "low",
+        "Chưa đủ thông tin để xác định loại bài toán.",
+    )
+
+
+
 def json_safe(value: Any) -> Any:
     """
     Chuyển dữ liệu pandas/numpy thành kiểu Python
@@ -505,28 +685,16 @@ def detect_target_candidates(
                 "Cột có đặc điểm giống ID."
             )
 
-        is_numeric = pd.api.types.is_numeric_dtype(
-            dataframe[column]
-        )
-
         unique_ratio = (
             unique_count / rows
             if rows > 0
             else 0.0
         )
 
-        if is_numeric and unique_count > 20:
-            suggested_problem_type = "regression"
-
-        elif unique_count <= 20:
-            suggested_problem_type = (
-                "classification"
-            )
-
-        else:
-            suggested_problem_type = (
-                "unknown"
-            )
+        problem_suggestion = infer_problem_type(
+            dataframe=dataframe,
+            target_column=column_name,
+        )
 
         if score > 0:
             candidates.append(
@@ -542,7 +710,13 @@ def detect_target_candidates(
                         6,
                     ),
                     "suggested_problem_type": (
-                        suggested_problem_type
+                        problem_suggestion["problem_type"]
+                    ),
+                    "problem_type_confidence": (
+                        problem_suggestion.get("confidence")
+                    ),
+                    "problem_type_reasons": (
+                        problem_suggestion.get("reasons", [])
                     ),
                     "reasons": reasons,
                 }
@@ -585,23 +759,31 @@ def build_target_analysis(
         target.isna().sum()
     )
 
-    is_numeric = pd.api.types.is_numeric_dtype(
-        target
+    problem_suggestion = infer_problem_type(
+        dataframe=dataframe,
+        target_column=target_column,
     )
+    problem_type = problem_suggestion["problem_type"]
 
-    if (
-        is_numeric
-        and unique_count
-        > max(20, int(rows * 0.01))
-    ):
-        problem_type = "regression"
-    else:
-        problem_type = "classification"
+    # target_analysis cần một nhánh cụ thể để tính thống kê.
+    # Nếu chưa đủ chắc chắn, dùng số mức giá trị làm fallback.
+    if problem_type == "unknown":
+        problem_type = (
+            "classification"
+            if unique_count <= 20
+            else "regression"
+        )
 
     result: dict[str, Any] = {
         "target_column": target_column,
         "dtype": str(target.dtype),
         "problem_type": problem_type,
+        "problem_type_confidence": (
+            problem_suggestion.get("confidence")
+        ),
+        "problem_type_reasons": (
+            problem_suggestion.get("reasons", [])
+        ),
         "missing_count": missing_count,
         "missing_percentage": (
             round(

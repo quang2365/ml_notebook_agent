@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated
+from typing import TypedDict, Annotated, Literal
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
@@ -16,5 +16,28 @@ class State(TypedDict):
     #kết quả tổng quan dataset thông qua llm
     summary_llm: str | None
 
+    problem_proposal: dict | None
+
+    # Target đã được người dùng xác nhận
+    target_column: str | None
+
+    # Loại bài toán đã xác nhận
+    problem_type: (
+        Literal["regression", "classification"]
+        | None
+    )
+
+    # Trạng thái xác nhận
+    approval_status: (
+        Literal["pending", "approved", "rejected"]
+        | None
+    )
+
+    # Phản hồi bổ sung từ người dùng
+    user_feedback: str | None
+
+    # Phân tích chi tiết target
+    target_analysis: dict | None
+    
     #Lỗi xảy ra khi đọc phân tích dataset
     error: str | None
