@@ -4,7 +4,6 @@ from state import State
 
 def propose_problem_node(state: State) -> dict:
     dataset_summary = state.get("summary")
-
     target_candidates = (dataset_summary.get("target_candidates"))
     if not target_candidates:
         problem_type = "không thể đề xuất taret candidates, chờ người dùng nhập"
