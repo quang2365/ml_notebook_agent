@@ -38,6 +38,21 @@ class State(TypedDict):
 
     # Phân tích chi tiết target
     target_analysis: dict | None
+
+    #plan cho việc huấn luyện
+    notebook_plan: dict | None
+
+    #lưu trữ các cell cho notebook jupyter
+    notebook_cells: list[dict] | None 
     
     #Lỗi xảy ra khi đọc phân tích dataset
     error: str | None
+
+    validation_status: Literal[
+    "pending",
+    "valid",
+    "invalid",
+    ] | None
+
+    validation_errors: list[dict] | None
+
