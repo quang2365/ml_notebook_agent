@@ -41,22 +41,108 @@ def plan_notebook_node(state: State) -> dict:
         }
 
     system_prompt = """
-Bạn là chuyên gia Machine Learning và thiết kế notebook.
+        Bạn là một Senior Data Scientist chuyên thiết kế
+        kế hoạch Jupyter Notebook cho bài toán Machine Learning.
 
-Nhiệm vụ của bạn là tạo một kế hoạch notebook Machine Learning
-có cấu trúc rõ ràng, phù hợp với dataset và bài toán đã xác nhận.
+        Nhiệm vụ của bạn là lập KẾ HOẠCH notebook.
+        KHÔNG viết code hoàn chỉnh.
 
-Yêu cầu:
-- Không viết code hoàn chỉnh.
-- Chỉ lập kế hoạch các phần và nhiệm vụ.
-- Các phần phải theo đúng thứ tự thực hiện.
-- Có tiền xử lý dữ liệu.
-- Có chia train/test.
-- Có baseline model.
-- Có ít nhất hai mô hình để so sánh.
-- Có metric phù hợp với loại bài toán.
-- Có phần đánh giá và kết luận.
-"""
+        Notebook phải ngắn gọn, có cấu trúc rõ ràng
+        và có thể được thực thi tuần tự từ trên xuống dưới.
+
+        QUY TẮC BẮT BUỘC:
+
+        1. Notebook phải có từ 8 đến 10 sections.
+
+        2. section_id phải tuần tự:
+        section_1
+        section_2
+        section_3
+        ...
+
+        3. Không được tạo section thừa hoặc chia một
+        nhiệm vụ nhỏ thành quá nhiều section.
+
+        4. Thứ tự pipeline Machine Learning phải hợp lý.
+
+        5. Dataset phải được load trước khi sử dụng.
+
+        6. EDA cơ bản phải xảy ra trước modeling.
+
+        7. Phải tách features X và target y.
+
+        8. Train/test split phải xảy ra TRƯỚC mọi bước
+        preprocessing có học tham số từ dữ liệu như:
+        - imputation
+        - scaling
+        - encoding
+        - feature selection
+        - dimensionality reduction
+        - learned transformation
+
+        9. Preprocessor chỉ được fit trên training set.
+
+        10. Không được fit preprocessing trên toàn bộ
+            dataset trước khi train/test split.
+
+        11. Feature engineering dựa trên công thức cố định
+            có thể được mô tả riêng, nhưng mọi transformation
+            học tham số phải fit trên train.
+
+        12. Phải có một baseline model.
+
+        13. Phải có ít nhất hai candidate models để
+            so sánh khi phù hợp với bài toán.
+
+        14. Các metric phải phù hợp với problem_type.
+
+        15. Phải có phần đánh giá và so sánh model.
+
+        16. Phải có phần kết luận.
+
+        17. Mỗi section chỉ nên chứa từ 1 đến 5 tasks.
+
+        18. Không tạo metric hoặc kết quả giả.
+
+        19. Không thực thi code.
+
+        20. Không tự thay đổi target_column hoặc
+            problem_type đã được xác nhận.
+        CẤU TRÚC GỢI Ý:
+
+        section_1:
+        - Setup môi trường và import thư viện.
+
+        section_2:
+        - Load dataset và kiểm tra cấu trúc cơ bản.
+
+        section_3:
+        - Exploratory Data Analysis.
+
+        section_4:
+        - Xác định X/y và train/test split.
+
+        section_5:
+        - Preprocessing và feature engineering.
+
+        section_6:
+        - Baseline model.
+
+        section_7:
+        - Candidate model thứ nhất.
+
+        section_8:
+        - Candidate model thứ hai.
+
+        section_9:
+        - Đánh giá, so sánh và phân tích model.
+
+        section_10:
+        - Kết luận và hướng phát triển.
+
+        Có thể gộp các section khi phù hợp,
+        nhưng tổng số section phải từ 8 đến 10.
+        """
 
     analysis_context = (
         summary.get("analysis_context")
@@ -96,7 +182,8 @@ Phân tích target:
         )
 
         plan_dict = plan.model_dump()
-
+        
+        validate_notebook_plan(plan_dict)
         return {
             "notebook_plan": plan_dict,
             "error": None,
@@ -184,3 +271,70 @@ def build_plan_message(plan: dict) -> str:
         lines.append("")
 
     return "\n".join(lines)
+def validate_notebook_plan(
+    plan: dict,
+) -> None:
+
+    sections = (
+        plan.get("sections")
+        or []
+    )
+
+    if not (
+        8 <= len(sections) <= 10
+    ):
+        raise ValueError(
+            "Notebook plan phải có "
+            "từ 8 đến 10 sections. "
+            f"Hiện tại: {len(sections)}."
+        )
+
+    seen_ids = set()
+
+    for index, section in enumerate(
+        sections,
+        start=1,
+    ):
+        section_id = section.get(
+            "section_id"
+        )
+
+        expected_id = (
+            f"section_{index}"
+        )
+
+        if not section_id:
+            raise ValueError(
+                f"Section {index} "
+                "không có section_id."
+            )
+
+        if section_id in seen_ids:
+            raise ValueError(
+                f"section_id `{section_id}` "
+                "bị trùng."
+            )
+
+        if section_id != expected_id:
+            raise ValueError(
+                "section_id sai thứ tự: "
+                f"expected `{expected_id}`, "
+                f"received `{section_id}`."
+            )
+
+        tasks = (
+            section.get("tasks")
+            or []
+        )
+
+        if not (
+            1 <= len(tasks) <= 5
+        ):
+            raise ValueError(
+                f"`{section_id}` phải có "
+                "từ 1 đến 5 tasks."
+            )
+
+        seen_ids.add(
+            section_id
+        )
