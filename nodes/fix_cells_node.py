@@ -68,6 +68,7 @@ def fix_cells_node(
 
         return {
             "error": message,
+            "fix_attempts": fix_attempts + 1,
             "messages": [
                 AIMessage(content=message)
             ],
@@ -102,7 +103,7 @@ def fix_cells_node(
 
     fixed_cell_ids = []
     failed_cell_ids = []
-
+    fix_failures = []
     for cell_id, errors in errors_by_cell.items():
 
         cell = cell_map.get(cell_id)
@@ -140,9 +141,20 @@ def fix_cells_node(
                 cell_id
             )
 
-        except Exception:
+        except Exception as exc:
             failed_cell_ids.append(
                 cell_id
+            )
+
+            fix_failures.append(
+                {
+                    "cell_id": cell_id,
+                    "title": cell.get("title"),
+                    "exception_type": (
+                        type(exc).__name__
+                    ),
+                    "message": str(exc),
+                }
             )
 
     new_fix_attempts = fix_attempts + 1
@@ -162,7 +174,7 @@ def fix_cells_node(
 
         "fix_attempts": new_fix_attempts,
         "fixed_cell_ids": fixed_cell_ids,
-
+        "fix_failures": fix_failures,
         "error": (
             None
             if not failed_cell_ids
@@ -206,7 +218,7 @@ def fix_single_cell(
 
     current_source = source
     current_errors = errors
-
+    last_syntax_error = None
     for attempt in range(
         1,
         MAX_CELL_FIX_RETRIES + 1,
@@ -293,7 +305,7 @@ Chỉ thay đổi những phần cần thiết.
             return candidate_source
 
         except SyntaxError as exc:
-
+            last_syntax_error = exc
             # Lần retry kế tiếp sẽ dùng
             # chính lỗi mới này
             current_source = (
@@ -314,10 +326,18 @@ Chỉ thay đổi những phần cần thiết.
                 }
             ]
 
+    if last_syntax_error:
+        raise RuntimeError(
+            f"Cell `{cell_id}` vẫn lỗi sau "
+            f"{MAX_CELL_FIX_RETRIES} lần. "
+            f"Line {last_syntax_error.lineno}: "
+            f"{last_syntax_error.msg}. "
+            f"Code: "
+            f"{last_syntax_error.text!r}"
+        )
+
     raise RuntimeError(
-        f"Không thể sửa syntax của "
-        f"cell `{cell_id}` sau "
-        f"{MAX_CELL_FIX_RETRIES} lần."
+        f"Không thể sửa cell `{cell_id}`."
     )
 def format_errors(
     errors: list[dict],
