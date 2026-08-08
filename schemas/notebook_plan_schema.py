@@ -55,5 +55,11 @@ class NotebookPlan(BaseModel):
     )
 
     sections: list[NotebookSection] = Field(
-        description="Các phần của notebook theo đúng thứ tự."
-    )
+    min_length=8,
+    max_length=10,
+    description=(
+        "Danh sách từ 8 đến 10 section "
+        "của notebook theo đúng thứ tự "
+        "thực hiện Machine Learning."
+    ),
+)
