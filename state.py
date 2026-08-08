@@ -48,11 +48,26 @@ class State(TypedDict):
     #Lỗi xảy ra khi đọc phân tích dataset
     error: str | None
 
+    #tình trạng xác thực code
     validation_status: Literal[
     "pending",
     "valid",
     "invalid",
     ] | None
 
+    generation_status: Literal[
+    "pending",
+    "success",
+    "failed",
+    ] | None
+    
+    #các lỗi của cells sau khi xác thực
     validation_errors: list[dict] | None
 
+    #số lượng các lỗi
+    fix_attempts: int
+
+    #các cell_id chứa lỗi
+    fixed_cell_ids: list[str] | None
+
+    fix_failures: list[dict] | None
