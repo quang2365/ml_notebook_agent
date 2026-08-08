@@ -37,6 +37,20 @@ class NotebookCell(BaseModel):
     )
 
 
+class GeneratedSection(BaseModel):
+    section_id: str = Field(
+        description=(
+            "ID của section đang được generate."
+        )
+    )
+
+    cells: list[NotebookCell] = Field(
+        description=(
+            "Danh sách các notebook cell "
+            "thuộc section này."
+        )
+    )
+
 class GeneratedNotebook(BaseModel):
     notebook_title: str = Field(description="title của notebook")
 
