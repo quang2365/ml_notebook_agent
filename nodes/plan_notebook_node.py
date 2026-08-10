@@ -2,6 +2,8 @@ import json
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
+from validators.plan_validator import validate_notebook_plan
+
 from model.model import llm
 from schemas.notebook_plan_schema import NotebookPlan
 from state import State
@@ -271,70 +273,3 @@ def build_plan_message(plan: dict) -> str:
         lines.append("")
 
     return "\n".join(lines)
-def validate_notebook_plan(
-    plan: dict,
-) -> None:
-
-    sections = (
-        plan.get("sections")
-        or []
-    )
-
-    if not (
-        8 <= len(sections) <= 10
-    ):
-        raise ValueError(
-            "Notebook plan phải có "
-            "từ 8 đến 10 sections. "
-            f"Hiện tại: {len(sections)}."
-        )
-
-    seen_ids = set()
-
-    for index, section in enumerate(
-        sections,
-        start=1,
-    ):
-        section_id = section.get(
-            "section_id"
-        )
-
-        expected_id = (
-            f"section_{index}"
-        )
-
-        if not section_id:
-            raise ValueError(
-                f"Section {index} "
-                "không có section_id."
-            )
-
-        if section_id in seen_ids:
-            raise ValueError(
-                f"section_id `{section_id}` "
-                "bị trùng."
-            )
-
-        if section_id != expected_id:
-            raise ValueError(
-                "section_id sai thứ tự: "
-                f"expected `{expected_id}`, "
-                f"received `{section_id}`."
-            )
-
-        tasks = (
-            section.get("tasks")
-            or []
-        )
-
-        if not (
-            1 <= len(tasks) <= 5
-        ):
-            raise ValueError(
-                f"`{section_id}` phải có "
-                "từ 1 đến 5 tasks."
-            )
-
-        seen_ids.add(
-            section_id
-        )
