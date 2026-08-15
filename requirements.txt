@@ -1,4 +1,9 @@
 langgraph
 langchain
+langchain-openai
+python-dotenv
 pandas
+numpy
+rich
 typing-extensions
+pydantic
