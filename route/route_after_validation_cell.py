@@ -6,7 +6,7 @@ def route_after_validation_cell(
 ) -> str:
 
     status = state.get(
-        "validation_status"
+        "validation_cell_status"
     )
 
     attempts = state.get(

@@ -49,6 +49,15 @@ class PlanValidationTests(unittest.TestCase):
 
 
 class CellValidationTests(unittest.TestCase):
+    def test_missing_cells_uses_cell_validation_status(self) -> None:
+        result = validate_cells_node({"notebook_cells": []})
+
+        self.assertEqual(result["validation_cell_status"], "invalid")
+        self.assertEqual(
+            result["validation_errors"][0]["error_type"],
+            "missing_cells",
+        )
+
     def test_valid_cells(self) -> None:
         state = {
             "notebook_cells": [make_agent_cell()],
@@ -56,7 +65,7 @@ class CellValidationTests(unittest.TestCase):
 
         result = validate_cells_node(state)
 
-        self.assertEqual(result["validation_status"], "valid")
+        self.assertEqual(result["validation_cell_status"], "valid")
         self.assertEqual(result["validation_errors"], [])
 
     def test_invalid_syntax(self) -> None:
@@ -66,7 +75,7 @@ class CellValidationTests(unittest.TestCase):
 
         result = validate_cells_node(state)
 
-        self.assertEqual(result["validation_status"], "invalid")
+        self.assertEqual(result["validation_cell_status"], "invalid")
         error_types = {
             error["error_type"]
             for error in result["validation_errors"]
@@ -109,7 +118,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(
             route_after_validation_cell(
                 {
-                    "validation_status": "valid",
+                    "validation_cell_status": "valid",
                     "fix_attempts": 0,
                     "notebook_cells": cells,
                 }
@@ -119,7 +128,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(
             route_after_validation_cell(
                 {
-                    "validation_status": "invalid",
+                    "validation_cell_status": "invalid",
                     "fix_attempts": 0,
                     "notebook_cells": cells,
                 }
@@ -129,7 +138,7 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(
             route_after_validation_cell(
                 {
-                    "validation_status": "invalid",
+                    "validation_cell_status": "invalid",
                     "fix_attempts": 3,
                     "notebook_cells": cells,
                 }

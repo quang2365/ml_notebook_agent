@@ -17,7 +17,7 @@ def validate_cells_node(state: State) -> dict:
         )
 
         return {
-            "validation_status": "invalid",
+            "validation_cell_status": "invalid",
             "validation_errors": [
                 {
                     "error_type": "missing_cells",
@@ -46,7 +46,7 @@ def validate_cells_node(state: State) -> dict:
         )
 
         return {
-            "validation_status": "invalid",
+            "validation_cell_status": "invalid",
             "validation_errors": validation_errors,
             "error": (
                 f"Phát hiện "
@@ -72,7 +72,7 @@ def validate_cells_node(state: State) -> dict:
     )
 
     return {
-        "validation_status": "valid",
+        "validation_cell_status": "valid",
         "validation_errors": [],
         "error": None,
         "messages": [
@@ -88,7 +88,6 @@ def validate_cells_node(state: State) -> dict:
             )
         ],
     }
-
 
 def build_validation_message(
     errors: list[dict],

@@ -4,9 +4,10 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 class State(TypedDict):
+    ##__________________Messages chung_____________________##
     #message của người dùng/ hệ thông/ Tool/ AI
     messages: Annotated[list[BaseMessage],add_messages]
-
+    ##____________State liên quan đến dataset______________##
     #đường dẫn của dataset
     dataset_path: str | None
 
@@ -20,38 +21,28 @@ class State(TypedDict):
 
     # Target đã được người dùng xác nhận
     target_column: str | None
-
+    ##___________________User Interrupt_____________##
     # Loại bài toán đã xác nhận
-    problem_type: (
-        Literal["regression", "classification"]
-        | None
-    )
+    problem_type: (Literal["regression", "classification"]| None)
 
     # Trạng thái xác nhận
-    approval_status: (
-        Literal["pending", "approved", "rejected"]
-        | None
-    )
+    approval_status: (Literal["pending", "approved", "rejected"]| None)
 
     # Phản hồi bổ sung từ người dùng
     user_feedback: str | None
 
     # Phân tích chi tiết target
     target_analysis: dict | None
-
+    ##_________________State liên quan đến plan notebook_______##
     #plan cho việc huấn luyện
     notebook_plan: dict | None
-
-    plan_validation_status: Literal[
-    "pending",
-    "valid",
-    "invalid",
-    ] | None
-
+    #trạng thái validate của Plan
+    plan_validation_status: Literal["pending","valid","invalid",] | None
+    #các lỗi của plan
     plan_validation_errors: list[dict] | None
-
+    #số lần sửa của plan
     plan_fix_attempts: int
-
+    ##__________________State liên quan đến cells______________##
     #lưu trữ các cell cho notebook jupyter
     notebook_cells: list[dict] | None
 
@@ -59,30 +50,18 @@ class State(TypedDict):
     error: str | None
 
     #tình trạng xác thực code
-    validation_status: Literal[
-    "pending",
-    "valid",
-    "invalid",
-    ] | None
+    validation_cell_status: Literal["pending","valid","invalid",] | None
 
-    generation_status: Literal[
-    "pending",
-    "success",
-    "failed",
-    ] | None
+    generation_cell_status: Literal["pending","success","failed",] | None
 
     notebook_path: str | None
 
-    build_status: Literal[
-        "pending",
-        "success",
-        "failed",
-    ] | None
+    build_status: Literal["pending","success","failed",] | None
 
     #các lỗi của cells sau khi xác thực
     validation_errors: list[dict] | None
 
-    #số lượng các lỗi
+    #số lượng lần sửa lỗi
     fix_attempts: int
 
     #các cell_id chứa lỗi

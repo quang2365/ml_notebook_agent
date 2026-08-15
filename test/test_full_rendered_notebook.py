@@ -77,7 +77,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
     def test_complete_render_contains_30_cells(self) -> None:
         result, fake = self._generate_offline()
 
-        self.assertEqual(result["generation_status"], "success")
+        self.assertEqual(result["generation_cell_status"], "success")
         self.assertEqual(len(result["notebook_cells"]), 30)
         self.assertEqual(len(fake.calls), 10)
 
@@ -103,7 +103,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
             )
 
         self.assertEqual(
-            validation["validation_status"],
+            validation["validation_cell_status"],
             "valid",
             msg=json.dumps(
                 validation.get("validation_errors"),
@@ -141,7 +141,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
                 }
             )
 
-        self.assertEqual(validation["validation_status"], "invalid")
+        self.assertEqual(validation["validation_cell_status"], "invalid")
         self.assertTrue(
             any(
                 error.get("error_type") == "syntax_error"

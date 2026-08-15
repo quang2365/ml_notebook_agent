@@ -101,7 +101,7 @@ def fix_cells_node(
         )
         new_fix_attempts = fix_attempts + 1
         return {
-            "validation_status": "invalid",
+            "validation_cell_status": "invalid",
             "validation_errors": [],
             "fix_attempts": new_fix_attempts,
             "fixed_cell_ids": [],
@@ -195,7 +195,7 @@ def fix_cells_node(
         "notebook_cells": updated_cells,
 
         # Validator tiếp theo sẽ xác định lại
-        "validation_status": "pending",
+        "validation_cell_status": "pending",
         "validation_errors": None,
 
         "fix_attempts": new_fix_attempts,

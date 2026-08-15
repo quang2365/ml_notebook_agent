@@ -102,10 +102,10 @@ def main() -> None:
         "notebook_path": "output/test.ipynb",  #AI
         "build_status": "pending",  #AI
 
-        "validation_status": None,
+        "validation_cell_status": None,
         "validation_errors": None,
 
-        "generation_status": None,
+        "generation_cell_status": None,
 
         "fix_attempts": 0,
         "fixed_cell_ids": None,
@@ -311,9 +311,9 @@ def main() -> None:
     # =========================================
     # 10. VALIDATION RESULT
     # =========================================
-    validation_status = (
+    validation_cell_status = (
         final_result.get(
-            "validation_status"
+            "validation_cell_status"
         )
     )
 
@@ -330,7 +330,7 @@ def main() -> None:
 
     console.print(
         "Status:",
-        validation_status,
+        validation_cell_status,
     )
 
     console.print(
@@ -438,7 +438,7 @@ def main() -> None:
     console.print(
     "Generation Status  :",
     final_result.get(
-        "generation_status"
+        "generation_cell_status"
     ),
 )
     # =========================================
@@ -452,9 +452,9 @@ def main() -> None:
         f"""
 Target              : {final_result.get("target_column")}
 Problem Type        : {final_result.get("problem_type")}
-Generation Status   : {final_result.get("generation_status")}
+Generation Status   : {final_result.get("generation_cell_status")}
 Notebook Cells      : {len(notebook_cells)}
-Validation Status   : {validation_status}
+Validation Status   : {validation_cell_status}
 Validation Errors   : {len(validation_errors)}
 Fix Attempts        : {fix_attempts}
 Fixed Cells         : {len(fixed_cell_ids)}

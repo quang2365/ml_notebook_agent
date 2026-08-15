@@ -140,7 +140,7 @@ class GenerateCellsOfflineTests(unittest.TestCase):
         ):
             result = generate_cells_node(state)
 
-        self.assertEqual(result["generation_status"], "success")
+        self.assertEqual(result["generation_cell_status"], "success")
         self.assertEqual(len(result["notebook_cells"]), 8)
         self.assertEqual(len(fake.calls), 8)
 

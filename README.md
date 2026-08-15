@@ -550,13 +550,13 @@ class State(TypedDict):
     notebook_plan: dict | None
     notebook_cells: list[dict] | None
 
-    generation_status: Literal[
+    generation_cell_status: Literal[
         "pending",
         "success",
         "failed",
     ] | None
 
-    validation_status: Literal[
+    validation_cell_status: Literal[
         "pending",
         "valid",
         "invalid",

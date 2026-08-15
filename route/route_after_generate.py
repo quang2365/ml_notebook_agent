@@ -6,7 +6,7 @@ def route_after_generation(
 ) -> str:
 
     status = state.get(
-        "generation_status"
+        "generation_cell_status"
     )
 
     cells = (
@@ -19,7 +19,7 @@ def route_after_generation(
     )
 
     print(
-        "generation_status =",
+        "generation_cell_status =",
         repr(status),
     )
 

@@ -40,7 +40,104 @@ QUY TẮC BẮT BUỘC:
 14. Preprocessing phải fit trên train set khi phù hợp.
 15. section_id của mọi cell phải đúng với section_id được cung cấp.
 16. cell_id phải duy nhất và nên bắt đầu bằng section_id.
+17. Phải tuân thủ tuyệt đối VARIABLE CONTRACT được cung cấp.
+18. Không tự tạo tên thay thế cho các biến chuẩn
+    nếu contract đã quy định tên biến.
+19. Chỉ sử dụng biến được tạo ở section hiện tại
+    hoặc các section đứng trước.
+20. Không giả định tồn tại biến chưa được tạo.
+21. Các model nên sử dụng sklearn Pipeline chứa
+    preprocessor khi phù hợp để tránh data leakage.
+22. Không fit preprocessor riêng trên test set.
+23. Không fit preprocessing có học tham số trên
+    toàn bộ dataset trước train/test split.
 """
+NOTEBOOK_VARIABLE_CONTRACT = """
+        VARIABLE CONTRACT CHUNG CHO TOÀN NOTEBOOK:
+
+        Các section phải sử dụng nhất quán các biến sau.
+
+        1. Dataset:
+
+        df
+        - DataFrame gốc được đọc từ dataset_path.
+        - Không đổi tên thành data, dataset hoặc housing_df.
+
+        target_column
+        - Tên cột target đã được người dùng xác nhận.
+
+        2. Features và target:
+
+        X
+        - Toàn bộ features trước train/test split.
+
+        y
+        - Target.
+
+        3. Train/test split:
+
+        X_train
+        X_test
+        y_train
+        y_test
+
+        Không tự tạo các tên thay thế như:
+        X_train_data
+        train_X
+        features_train
+        y_training
+
+        4. Preprocessing:
+
+        preprocessor
+        - Đối tượng preprocessing chính.
+        - Có thể là ColumnTransformer hoặc Pipeline.
+
+        Không fit preprocessor trên toàn bộ X trước train/test split.
+
+        Ưu tiên đưa preprocessor trực tiếp vào
+        sklearn Pipeline cùng model thay vì tạo các biến:
+
+        X_train_processed
+        X_test_processed
+        X_train_scaled
+        X_test_scaled
+
+        trừ khi section plan thực sự yêu cầu.
+
+        5. Quản lý model:
+
+        trained_models = {}
+        predictions = {}
+        model_results = []
+
+        Mỗi model sau khi train phải được lưu vào:
+
+        trained_models["model_name"]
+
+        Prediction tương ứng:
+
+        predictions["model_name"]
+
+        Metric của model phải được thêm vào:
+
+        model_results.append({
+            "model": "...",
+            ...
+        })
+
+        6. Random state:
+
+        RANDOM_STATE = 42
+
+        Mọi model hoặc train/test split hỗ trợ random_state
+        phải sử dụng RANDOM_STATE.
+
+        7. Một section không được sử dụng biến của
+        section sau nó.
+
+        8. Không tự đổi tên các biến đã quy định ở trên.
+        """
 MAX_SECTION_RETRIES = 3
 RATE_LIMIT_BASE_DELAY = 15
 NORMAL_RETRY_DELAY = 3
@@ -85,7 +182,7 @@ def generate_cells_node(
 
         return {
             "notebook_cells": None,
-            "generation_status": "failed",
+            "generation_cell_status": "failed",
             "error": error_message,
             "messages": [
                 AIMessage(
@@ -101,7 +198,7 @@ def generate_cells_node(
 
         return {
             "notebook_cells": None,
-            "generation_status": "failed",
+            "generation_cell_status": "failed",
             "error": error_message,
             "messages": [
                 AIMessage(
@@ -121,7 +218,7 @@ def generate_cells_node(
 
         return {
             "notebook_cells": None,
-            "generation_status": "failed",
+            "generation_cell_status": "failed",
             "error": error_message,
             "messages": [
                 AIMessage(
@@ -206,7 +303,7 @@ def generate_cells_node(
 
             return {
                 "notebook_cells": None,
-                "generation_status": "failed",
+                "generation_cell_status": "failed",
                 "error": error_message,
                 "messages": [
                     AIMessage(
@@ -253,7 +350,7 @@ def generate_cells_node(
 
         return {
             "notebook_cells": all_cells,
-            "generation_status": "success",
+            "generation_cell_status": "success",
             "error": validation_error,
             "messages": [
                 AIMessage(
@@ -268,7 +365,7 @@ def generate_cells_node(
 
     return {
     "notebook_cells": all_cells,
-    "generation_status": "success",
+    "generation_cell_status": "success",
     "error": None,
     "messages": [
         AIMessage(
@@ -401,37 +498,39 @@ def generate_one_section(
 ) -> dict:
 
     user_prompt = f"""
-Hãy tạo các notebook cell cho section sau.
+        Hãy tạo các notebook cell cho section sau.
 
-SECTION ID:
-{section_id}
+        SECTION ID:
+        {section_id}
 
-SECTION PLAN:
-{json.dumps(
-    section,
-    ensure_ascii=False,
-    default=str,
-    indent=2,
-)}
+        SECTION PLAN:
+        {json.dumps(
+            section,
+            ensure_ascii=False,
+            default=str,
+            indent=2,
+        )}
 
-DATASET PATH:
-{dataset_path}
+        DATASET PATH:
+        {dataset_path}
 
-TARGET COLUMN:
-{target_column}
+        TARGET COLUMN:
+        {target_column}
 
-PROBLEM TYPE:
-{problem_type}
+        PROBLEM TYPE:
+        {problem_type}
 
-DATASET CONTEXT:
-{json.dumps(
-    dataset_context,
-    ensure_ascii=False,
-    default=str,
-    indent=2,
-)}
-"""
+        DATASET CONTEXT:
+        {json.dumps(
+            dataset_context,
+            ensure_ascii=False,
+            default=str,
+            indent=2,
+        )}
 
+        VARIABLE CONTRACT:
+        {NOTEBOOK_VARIABLE_CONTRACT}
+        """
     last_error = None
 
     for attempt in range(
