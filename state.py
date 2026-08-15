@@ -49,13 +49,16 @@ class State(TypedDict):
     #Lỗi xảy ra khi đọc phân tích dataset
     error: str | None
 
+    #tính trạng sinh code 
+    generation_cell_status: Literal["pending","success","failed",] | None
+
     #tình trạng xác thực code
     validation_cell_status: Literal["pending","valid","invalid",] | None
 
-    generation_cell_status: Literal["pending","success","failed",] | None
-
+    ##____________________State liên quan đến việc build cell_____________##
+    #đường dẫn của output notebook 
     notebook_path: str | None
-
+    #tình trạng của notebook
     build_status: Literal["pending","success","failed",] | None
 
     #các lỗi của cells sau khi xác thực
