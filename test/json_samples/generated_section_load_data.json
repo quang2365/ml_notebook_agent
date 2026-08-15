@@ -1,0 +1,23 @@
+{
+  "section_id": "section_2",
+  "cells": [
+    {
+      "cell_id": "section_2_code_1",
+      "section_id": "section_2",
+      "cell_type": "code",
+      "title": "Load dataset",
+      "source": "dataset_path = \"data/housing.csv\"\ndf = pd.read_csv(dataset_path)\ndf.head()",
+      "purpose": "Đọc dataset vào biến df.",
+      "expected_output": "Hiển thị 5 dòng đầu tiên của dataset."
+    },
+    {
+      "cell_id": "section_2_code_2",
+      "section_id": "section_2",
+      "cell_type": "code",
+      "title": "Inspect dataset shape",
+      "source": "print(f\"Rows: {len(df)}\")\nprint(f\"Columns: {len(df.columns)}\")\ndf.info()",
+      "purpose": "Kiểm tra kích thước và kiểu dữ liệu.",
+      "expected_output": "Thông tin tổng quan về dataframe."
+    }
+  ]
+}

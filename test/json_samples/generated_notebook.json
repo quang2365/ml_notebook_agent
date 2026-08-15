@@ -1,0 +1,32 @@
+{
+  "notebook_title": "Housing Price Prediction",
+  "cells": [
+    {
+      "cell_id": "section_1_markdown_1",
+      "section_id": "section_1",
+      "cell_type": "markdown",
+      "title": "Problem statement",
+      "source": "# Housing Price Prediction\n\nBài toán hồi quy dự đoán giá nhà.",
+      "purpose": "Mô tả bài toán Machine Learning.",
+      "expected_output": null
+    },
+    {
+      "cell_id": "section_1_code_1",
+      "section_id": "section_1",
+      "cell_type": "code",
+      "title": "Load data",
+      "source": "import pandas as pd\n\ndf = pd.read_csv(\"data/housing.csv\")\ndf.head()",
+      "purpose": "Đọc dataset.",
+      "expected_output": "Hiển thị dữ liệu mẫu."
+    },
+    {
+      "cell_id": "section_2_code_1",
+      "section_id": "section_2",
+      "cell_type": "code",
+      "title": "Define target",
+      "source": "target_column = \"median_house_value\"\nX = df.drop(columns=[target_column])\ny = df[target_column]",
+      "purpose": "Tách features và target.",
+      "expected_output": "X và y được tạo thành công."
+    }
+  ]
+}
