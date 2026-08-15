@@ -1,73 +1,131 @@
-from typing import TypedDict, Annotated, Literal
+from typing import Annotated, Literal, TypedDict
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
+
 class State(TypedDict):
-    ##__________________Messages chung_____________________##
-    #message của người dùng/ hệ thông/ Tool/ AI
-    messages: Annotated[list[BaseMessage],add_messages]
-    ##____________State liên quan đến dataset______________##
-    #đường dẫn của dataset
+    # ==================================================
+    # 1. MESSAGES
+    # ==================================================
+
+    # Lịch sử message của người dùng, LLM, system và tool.
+    messages: Annotated[
+        list[BaseMessage],
+        add_messages,
+    ]
+
+    # ==================================================
+    # 2. DATASET
+    # ==================================================
+
+    # Đường dẫn tới dataset.
     dataset_path: str | None
 
-    #kết quả tổng quan dataset
+    # Kết quả inspect dataset bằng Python.
     summary: dict | None
 
-    #kết quả tổng quan dataset thông qua llm
+    # Kết quả phân tích dataset bằng LLM.
     summary_llm: str | None
 
+    # ==================================================
+    # 3. PROBLEM PROPOSAL VÀ HUMAN REVIEW
+    # ==================================================
+
+    # Đề xuất bài toán từ LLM.
     problem_proposal: dict | None
 
-    # Target đã được người dùng xác nhận
+    # Target đã được người dùng xác nhận.
     target_column: str | None
-    ##___________________User Interrupt_____________##
-    # Loại bài toán đã xác nhận
-    problem_type: (Literal["regression", "classification"]| None)
 
-    # Trạng thái xác nhận
-    approval_status: (Literal["pending", "approved", "rejected"]| None)
+    # Loại bài toán đã được xác nhận.
+    problem_type: (
+        Literal["regression", "classification"]
+        | None
+    )
 
-    # Phản hồi bổ sung từ người dùng
+    # Trạng thái xác nhận của người dùng.
+    approval_status: (
+        Literal["pending", "approved", "rejected"]
+        | None
+    )
+
+    # Phản hồi bổ sung của người dùng.
     user_feedback: str | None
 
-    # Phân tích chi tiết target
+    # Phân tích chi tiết target.
     target_analysis: dict | None
-    ##_________________State liên quan đến plan notebook_______##
-    #plan cho việc huấn luyện
+
+    # ==================================================
+    # 4. NOTEBOOK PLAN
+    # ==================================================
+
+    # Kế hoạch notebook.
     notebook_plan: dict | None
-    #trạng thái validate của Plan
-    plan_validation_status: Literal["pending","valid","invalid",] | None
-    #các lỗi của plan
+
+    # Trạng thái validation của plan.
+    plan_validation_status: (
+        Literal["pending", "valid", "invalid"]
+        | None
+    )
+
+    # Danh sách lỗi của plan.
     plan_validation_errors: list[dict] | None
-    #số lần sửa của plan
-    plan_fix_attempts: int
-    ##__________________State liên quan đến cells______________##
-    #lưu trữ các cell cho notebook jupyter
+
+    # Số vòng đã sửa plan.
+    fix_plan_attempts: int
+
+    # ==================================================
+    # 5. CELL GENERATION
+    # ==================================================
+
+    # Danh sách cell do LLM sinh ra.
     notebook_cells: list[dict] | None
 
-    #Lỗi xảy ra khi đọc phân tích dataset
-    error: str | None
+    # Trạng thái sinh cells.
+    generation_cell_status: (
+        Literal["pending", "success", "failed"]
+        | None
+    )
 
-    #tính trạng sinh code 
-    generation_cell_status: Literal["pending","success","failed",] | None
+    # ==================================================
+    # 6. CELL VALIDATION VÀ REPAIR
+    # ==================================================
 
-    #tình trạng xác thực code
-    validation_cell_status: Literal["pending","valid","invalid",] | None
+    # Trạng thái validation của cells.
+    validation_cell_status: (
+        Literal["pending", "valid", "invalid"]
+        | None
+    )
 
-    ##____________________State liên quan đến việc build cell_____________##
-    #đường dẫn của output notebook 
-    notebook_path: str | None
-    #tình trạng của notebook
-    build_status: Literal["pending","success","failed",] | None
+    # Danh sách lỗi của cells.
+    validation_cell_errors: list[dict] | None
 
-    #các lỗi của cells sau khi xác thực
-    validation_errors: list[dict] | None
+    # Số vòng đã sửa cells.
+    fix_cell_attempts: int
 
-    #số lượng lần sửa lỗi
-    fix_attempts: int
-
-    #các cell_id chứa lỗi
+    # ID của những cell đã sửa thành công.
     fixed_cell_ids: list[str] | None
 
-    fix_failures: list[dict] | None
+    # Danh sách những cell không sửa được.
+    fix_cell_failures: list[dict] | None
+
+    # ==================================================
+    # 7. NOTEBOOK BUILD
+    # ==================================================
+
+    # Đường dẫn file notebook đầu ra.
+    notebook_path: str | None
+
+    # Trạng thái tạo file notebook.
+    build_status: (
+        Literal["pending", "success", "failed"]
+        | None
+    )
+
+    # ==================================================
+    # 8. GLOBAL ERROR
+    # ==================================================
+
+    # Lỗi tổng quát gần nhất của workflow.
+    error: str | None
