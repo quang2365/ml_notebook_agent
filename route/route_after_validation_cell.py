@@ -1,7 +1,7 @@
 MAX_FIX_ATTEMPTS = 3
 
 from state import State
-def route_after_validation(
+def route_after_validation_cell(
     state: State,
 ) -> str:
 

@@ -20,31 +20,52 @@ fix_llm = llm.with_structured_output(
 
 
 SYSTEM_PROMPT = """
-Bạn là Python code repair agent.
+Bạn là chuyên gia Python và Machine Learning.
 
-Nhiệm vụ duy nhất của bạn là sửa lỗi cú pháp Python
-trong một Jupyter Notebook code cell.
+Nhiệm vụ của bạn là sửa MỘT notebook cell
+dựa trên validation errors được cung cấp.
+
+Bạn có thể nhận các loại lỗi:
+
+1. syntax_error
+2. undefined_variable
 
 QUY TẮC BẮT BUỘC:
 
-1. Chỉ sửa lỗi cần thiết.
-2. Giữ nguyên ý nghĩa và logic của code.
-3. Không thay đổi cell_id.
-4. Không thay đổi tên biến nếu không cần thiết.
-5. Không thay đổi dataset path.
-6. Không thay đổi target column.
-7. Không thêm Markdown code fence.
-8. source phải chỉ chứa Python code.
-9. Code sau khi sửa phải hợp lệ với Python parser.
-10. Không thực thi code.
-11. Không tạo output giả.
-12. Không viết giải thích vào source.
-13. Khi cần xuống dòng trong print(), ưu tiên:
-       print("text")
-       print(value)
-   thay vì tạo chuỗi nhiều dòng phức tạp.
-"""
+1. Chỉ sửa những vấn đề liên quan đến lỗi
+   được cung cấp.
 
+2. Không viết lại toàn bộ notebook.
+
+3. Không thay đổi target column.
+
+4. Không thay đổi dataset path.
+
+5. Không tạo metric hoặc kết quả giả.
+
+6. Không tạo biến tùy tiện chỉ để làm lỗi biến mất.
+
+7. Với undefined_variable:
+
+   - Kiểm tra AVAILABLE NAMES.
+   - Kiểm tra PREVIOUS CODE CONTEXT.
+   - Nếu biến lỗi chỉ là tên không nhất quán,
+     ưu tiên sử dụng biến đã tồn tại.
+   - Nếu thực sự cần định nghĩa biến mới,
+     chỉ tạo khi logic Machine Learning yêu cầu.
+
+8. Phải tuân thủ VARIABLE CONTRACT.
+
+9. Không tạo data leakage.
+
+10. Preprocessing học tham số chỉ được fit
+    trên training data.
+
+11. Giữ thay đổi nhỏ nhất có thể.
+
+12. Source trả về phải là Python thuần,
+    không dùng Markdown code fence.
+"""
 
 def fix_cells_node(
     state: State,
@@ -78,8 +99,13 @@ def fix_cells_node(
         message = (
             "Không có validation_errors để sửa."
         )
-
+        new_fix_attempts = fix_attempts + 1
         return {
+            "validation_status": "invalid",
+            "validation_errors": [],
+            "fix_attempts": new_fix_attempts,
+            "fixed_cell_ids": [],
+            "fix_failures": [],
             "error": message,
             "messages": [
                 AIMessage(content=message)
@@ -451,3 +477,41 @@ def build_fix_message(
     )
 
     return "\n".join(lines)
+
+def build_previous_code_context(
+    cells: list[dict],
+    target_index: int,
+    max_cells: int = 5,
+) -> str:
+
+    previous_cells = []
+
+    for cell in cells[:target_index]:
+        if (
+            cell.get("cell_type")
+            == "code"
+        ):
+            previous_cells.append(
+                cell
+            )
+
+    previous_cells = (
+        previous_cells[-max_cells:]
+    )
+
+    blocks = []
+
+    for cell in previous_cells:
+        blocks.append(
+            f"""
+CELL ID:
+{cell.get("cell_id")}
+
+SOURCE:
+{cell.get("source")}
+"""
+        )
+
+    return "\n".join(
+        blocks
+    )

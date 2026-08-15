@@ -11,11 +11,9 @@ class NotebookCell(BaseModel):
     section_id: str = Field(
         description="Section mà cell thuộc về."
     )
-
     cell_type: Literal["markdown", "code"] = Field(
-        description="Loại cell: markdown hoặc code."
+        description="Loại của cell: markdown hoặc code."
     )
-
     title: str = Field(
         description="Tên ngắn mô tả cell."
     )
@@ -50,8 +48,3 @@ class GeneratedSection(BaseModel):
             "thuộc section này."
         )
     )
-
-class GeneratedNotebook(BaseModel):
-    notebook_title: str = Field(description="title của notebook")
-
-    cells: list[NotebookCell]
