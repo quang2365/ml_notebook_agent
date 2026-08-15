@@ -42,9 +42,19 @@ class State(TypedDict):
     #plan cho việc huấn luyện
     notebook_plan: dict | None
 
+    plan_validation_status: Literal[
+    "pending",
+    "valid",
+    "invalid",
+    ] | None
+
+    plan_validation_errors: list[dict] | None
+
+    plan_fix_attempts: int
+
     #lưu trữ các cell cho notebook jupyter
-    notebook_cells: list[dict] | None 
-    
+    notebook_cells: list[dict] | None
+
     #Lỗi xảy ra khi đọc phân tích dataset
     error: str | None
 
@@ -60,7 +70,15 @@ class State(TypedDict):
     "success",
     "failed",
     ] | None
-    
+
+    notebook_path: str | None
+
+    build_status: Literal[
+        "pending",
+        "success",
+        "failed",
+    ] | None
+
     #các lỗi của cells sau khi xác thực
     validation_errors: list[dict] | None
 
