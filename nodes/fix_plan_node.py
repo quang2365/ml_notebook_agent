@@ -23,21 +23,21 @@ def fix_plan_node(state: State) -> dict:
         or []
     )
     attempts = state.get(
-        "plan_fix_attempts",
+        "fix_plan_attempts",
         0,
     )
 
     if not old_plan:
         return {
             "plan_validation_status": "invalid",
-            "plan_fix_attempts": attempts + 1,
+            "fix_plan_attempts": attempts + 1,
             "error": "Không có plan cũ để sửa.",
         }
 
     if not errors:
         return {
             "plan_validation_status": "invalid",
-            "plan_fix_attempts": attempts + 1,
+            "fix_plan_attempts": attempts + 1,
             "error": "Không có lỗi plan để sửa.",
         }
 
@@ -87,7 +87,7 @@ Quy tắc:
             "notebook_plan": fixed_plan.model_dump(),
             "plan_validation_status": "pending",
             "plan_validation_errors": None,
-            "plan_fix_attempts": attempts + 1,
+            "fix_plan_attempts": attempts + 1,
             "error": None,
             "messages": [
                 AIMessage(
@@ -99,7 +99,7 @@ Quy tắc:
     except Exception as exc:
         return {
             "plan_validation_status": "invalid",
-            "plan_fix_attempts": attempts + 1,
+            "fix_plan_attempts": attempts + 1,
             "error": f"Không thể sửa plan: {exc}",
             "messages": [
                 AIMessage(

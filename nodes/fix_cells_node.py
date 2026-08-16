@@ -72,13 +72,13 @@ def fix_cells_node(
 ) -> dict:
 
     cells = state.get("notebook_cells") or []
-    validation_errors = (
-        state.get("validation_errors")
+    validation_cell_errors = (
+        state.get("validation_cell_errors")
         or []
     )
 
-    fix_attempts = state.get(
-        "fix_attempts",
+    fix_cell_attempts = state.get(
+        "fix_cell_attempts",
         0,
     )
 
@@ -89,23 +89,23 @@ def fix_cells_node(
 
         return {
             "error": message,
-            "fix_attempts": fix_attempts + 1,
+            "fix_cell_attempts": fix_cell_attempts + 1,
             "messages": [
                 AIMessage(content=message)
             ],
         }
 
-    if not validation_errors:
+    if not validation_cell_errors:
         message = (
-            "Không có validation_errors để sửa."
+            "Không có validation_cell_errors để sửa."
         )
-        new_fix_attempts = fix_attempts + 1
+        new_fix_attempts = fix_cell_attempts + 1
         return {
             "validation_cell_status": "invalid",
-            "validation_errors": [],
-            "fix_attempts": new_fix_attempts,
+            "validation_cell_errors": [],
+            "fix_cell_attempts": new_fix_attempts,
             "fixed_cell_ids": [],
-            "fix_failures": [],
+            "fix_cell_failures": [],
             "error": message,
             "messages": [
                 AIMessage(content=message)
@@ -124,12 +124,12 @@ def fix_cells_node(
 
     # Gom lỗi theo cell_id
     errors_by_cell = group_errors_by_cell(
-        validation_errors
+        validation_cell_errors
     )
 
     fixed_cell_ids = []
     failed_cell_ids = []
-    fix_failures = []
+    fix_cell_failures = []
     for cell_id, errors in errors_by_cell.items():
 
         cell = cell_map.get(cell_id)
@@ -172,7 +172,7 @@ def fix_cells_node(
                 cell_id
             )
 
-            fix_failures.append(
+            fix_cell_failures.append(
                 {
                     "cell_id": cell_id,
                     "title": cell.get("title"),
@@ -183,7 +183,7 @@ def fix_cells_node(
                 }
             )
 
-    new_fix_attempts = fix_attempts + 1
+    new_fix_attempts = fix_cell_attempts + 1
 
     message = build_fix_message(
         fix_attempt=new_fix_attempts,
@@ -195,12 +195,12 @@ def fix_cells_node(
         "notebook_cells": updated_cells,
 
         # Validator tiếp theo sẽ xác định lại
-        "validation_cell_status": "pending",
-        "validation_errors": None,
+        "validation__cell_status": "pending",
+        "validation_cell_errors": None,
 
-        "fix_attempts": new_fix_attempts,
+        "fix_cell_attempts": new_fix_attempts,
         "fixed_cell_ids": fixed_cell_ids,
-        "fix_failures": fix_failures,
+        "fix_cell_failures": fix_cell_failures,
         "error": (
             None
             if not failed_cell_ids

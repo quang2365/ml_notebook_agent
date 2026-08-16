@@ -106,7 +106,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
             validation["validation_cell_status"],
             "valid",
             msg=json.dumps(
-                validation.get("validation_errors"),
+                validation.get("validation_cell_errors"),
                 ensure_ascii=False,
                 indent=2,
             ),
@@ -145,7 +145,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
         self.assertTrue(
             any(
                 error.get("error_type") == "syntax_error"
-                for error in validation["validation_errors"]
+                for error in validation["validation_cell_errors"]
             )
         )
 

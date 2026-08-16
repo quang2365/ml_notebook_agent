@@ -18,7 +18,7 @@ def validate_cells_node(state: State) -> dict:
 
         return {
             "validation_cell_status": "invalid",
-            "validation_errors": [
+            "validation_cell_errors": [
                 {
                     "error_type": "missing_cells",
                     "message": error_message,
@@ -30,27 +30,27 @@ def validate_cells_node(state: State) -> dict:
             ],
         }
 
-    validation_errors = validate_cells(cells)
+    validation_cell_errors = validate_cells(cells)
     dependency_errors = (validate_dependencies(cells)
     )
 
-    validation_errors.extend(
+    validation_cell_errors.extend(
         dependency_errors
     )
     # ==========================
     # CÓ LỖI
     # ==========================
-    if validation_errors:
+    if validation_cell_errors:
         message = build_validation_message(
-            validation_errors
+            validation_cell_errors
         )
 
         return {
             "validation_cell_status": "invalid",
-            "validation_errors": validation_errors,
+            "validation_cell_errors": validation_cell_errors,
             "error": (
                 f"Phát hiện "
-                f"{len(validation_errors)} lỗi "
+                f"{len(validation_cell_errors)} lỗi "
                 "trong notebook cells."
             ),
             "messages": [
@@ -73,7 +73,7 @@ def validate_cells_node(state: State) -> dict:
 
     return {
         "validation_cell_status": "valid",
-        "validation_errors": [],
+        "validation_cell_errors": [],
         "error": None,
         "messages": [
             AIMessage(

@@ -13,7 +13,7 @@ def route_after_plan_validation(
     )
 
     attempts = state.get(
-        "plan_fix_attempts",
+        "fix_plan_attempts",
         0,
     )
 

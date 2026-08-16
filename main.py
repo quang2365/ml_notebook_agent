@@ -97,19 +97,19 @@ def main() -> None:
         "notebook_plan": None,
         "plan_validation_status": None,  #AI
         "plan_validation_errors": None,  #AI
-        "plan_fix_attempts": 0,  #AI
+        "fix_plan_attempts": 0,  #AI
         "notebook_cells": None,
         "notebook_path": "output/test.ipynb",  #AI
         "build_status": "pending",  #AI
 
         "validation_cell_status": None,
-        "validation_errors": None,
+        "validation_cell_errors": None,
 
         "generation_cell_status": None,
 
-        "fix_attempts": 0,
+        "fix_cell_attempts": 0,
         "fixed_cell_ids": None,
-        "fix_failures": None,
+        "fix_cell_failures": None,
 
         "error": None,
     }
@@ -317,9 +317,9 @@ def main() -> None:
         )
     )
 
-    validation_errors = (
+    validation_cell_errors = (
         final_result.get(
-            "validation_errors"
+            "validation_cell_errors"
         )
         or []
     )
@@ -335,12 +335,12 @@ def main() -> None:
 
     console.print(
         "Errors:",
-        len(
-            validation_errors
-        ),
+            len(
+                validation_cell_errors
+            ),
     )
 
-    for error in validation_errors:
+    for error in validation_cell_errors:
         console.print(
             (
                 f"[red]"
@@ -358,8 +358,8 @@ def main() -> None:
         "[bold magenta]FIX CELLS"
     )
 
-    fix_attempts = final_result.get(
-        "fix_attempts",
+    fix_cell_attempts = final_result.get(
+        "fix_cell_attempts",
         0,
     )
 
@@ -370,16 +370,16 @@ def main() -> None:
         or []
     )
 
-    fix_failures = (
+    fix_cell_failures = (
         final_result.get(
-            "fix_failures"
+            "fix_cell_failures"
         )
         or []
     )
 
     console.print(
         "Fix attempts:",
-        fix_attempts,
+        fix_cell_attempts,
     )
 
     console.print(
@@ -396,12 +396,12 @@ def main() -> None:
 
     console.print(
         "Fix failures:",
-        len(
-            fix_failures
-        ),
+            len(
+                fix_cell_failures
+            ),
     )
 
-    for failure in fix_failures:
+    for failure in fix_cell_failures:
         console.print(
             "\n[red]Cell:[/red]",
             failure.get(
@@ -455,10 +455,10 @@ Problem Type        : {final_result.get("problem_type")}
 Generation Status   : {final_result.get("generation_cell_status")}
 Notebook Cells      : {len(notebook_cells)}
 Validation Status   : {validation_cell_status}
-Validation Errors   : {len(validation_errors)}
-Fix Attempts        : {fix_attempts}
+Validation Errors   : {len(validation_cell_errors)}
+Fix Attempts        : {fix_cell_attempts}
 Fixed Cells         : {len(fixed_cell_ids)}
-Fix Failures        : {len(fix_failures)}
+Fix Failures        : {len(fix_cell_failures)}
 
         """
     )

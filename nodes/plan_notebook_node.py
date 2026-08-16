@@ -185,17 +185,17 @@ Phân tích target:
 
         plan_dict = plan.model_dump()
         
-        validate_notebook_plan(plan_dict)
         return {
-            "notebook_plan": plan_dict,
-            "error": None,
-            "messages": [
-                AIMessage(
-                    content=build_plan_message(plan_dict)
-                )
-            ],
-        }
-
+                "notebook_plan": plan_dict,
+                "plan_validation_status": "pending",
+                "plan_validation_errors": None,
+                "error": None,
+                "messages": [
+                    AIMessage(
+                        content=build_plan_message(plan_dict)
+                    )
+                ],
+            }
     except Exception as exc:
         error_message = (
             f"Không thể lập kế hoạch notebook: {exc}"

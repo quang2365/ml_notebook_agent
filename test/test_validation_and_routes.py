@@ -54,7 +54,7 @@ class CellValidationTests(unittest.TestCase):
 
         self.assertEqual(result["validation_cell_status"], "invalid")
         self.assertEqual(
-            result["validation_errors"][0]["error_type"],
+            result["validation_cell_errors"][0]["error_type"],
             "missing_cells",
         )
 
@@ -66,7 +66,7 @@ class CellValidationTests(unittest.TestCase):
         result = validate_cells_node(state)
 
         self.assertEqual(result["validation_cell_status"], "valid")
-        self.assertEqual(result["validation_errors"], [])
+        self.assertEqual(result["validation_cell_errors"], [])
 
     def test_invalid_syntax(self) -> None:
         state = {
@@ -78,7 +78,7 @@ class CellValidationTests(unittest.TestCase):
         self.assertEqual(result["validation_cell_status"], "invalid")
         error_types = {
             error["error_type"]
-            for error in result["validation_errors"]
+            for error in result["validation_cell_errors"]
         }
         self.assertIn("syntax_error", error_types)
 
@@ -89,7 +89,7 @@ class RouteTests(unittest.TestCase):
             route_after_plan_validation(
                 {
                     "plan_validation_status": "valid",
-                    "plan_fix_attempts": 0,
+                    "fix_plan_attempts": 0,
                 }
             ),
             "valid",
@@ -98,7 +98,7 @@ class RouteTests(unittest.TestCase):
             route_after_plan_validation(
                 {
                     "plan_validation_status": "invalid",
-                    "plan_fix_attempts": 0,
+                    "fix_plan_attempts": 0,
                 }
             ),
             "fix",
@@ -107,7 +107,7 @@ class RouteTests(unittest.TestCase):
             route_after_plan_validation(
                 {
                     "plan_validation_status": "invalid",
-                    "plan_fix_attempts": 3,
+                    "fix_plan_attempts": 3,
                 }
             ),
             "failed",
@@ -119,7 +119,7 @@ class RouteTests(unittest.TestCase):
             route_after_validation_cell(
                 {
                     "validation_cell_status": "valid",
-                    "fix_attempts": 0,
+                    "fix_cell_attempts": 0,
                     "notebook_cells": cells,
                 }
             ),
@@ -129,7 +129,7 @@ class RouteTests(unittest.TestCase):
             route_after_validation_cell(
                 {
                     "validation_cell_status": "invalid",
-                    "fix_attempts": 0,
+                    "fix_cell_attempts": 0,
                     "notebook_cells": cells,
                 }
             ),
@@ -139,7 +139,7 @@ class RouteTests(unittest.TestCase):
             route_after_validation_cell(
                 {
                     "validation_cell_status": "invalid",
-                    "fix_attempts": 3,
+                    "fix_cell_attempts": 3,
                     "notebook_cells": cells,
                 }
             ),

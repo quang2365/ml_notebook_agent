@@ -80,14 +80,14 @@ class FixPlanOfflineTests(unittest.TestCase):
                     "message": "Section 6 has no tasks.",
                 }
             ],
-            "plan_fix_attempts": 0,
+            "fix_plan_attempts": 0,
         }
 
         with patch("nodes.fix_plan_node.fix_plan_llm", fake):
             result = fix_plan_node(state)
 
         self.assertEqual(result["plan_validation_status"], "pending")
-        self.assertEqual(result["plan_fix_attempts"], 1)
+        self.assertEqual(result["fix_plan_attempts"], 1)
         self.assertEqual(len(fake.calls), 1)
 
         prompt = fake.calls[0]["input"][1].content
@@ -146,6 +146,24 @@ class GenerateCellsOfflineTests(unittest.TestCase):
 
 
 class FixCellsOfflineTests(unittest.TestCase):
+    def test_fix_without_validation_errors_uses_cell_status(self) -> None:
+        result = fix_cells_node(
+            {
+                "notebook_cells": [
+                    {
+                        "cell_id": "section_1_1",
+                        "cell_type": "code",
+                        "source": "value = 1",
+                    }
+                ],
+                "validation_cell_errors": [],
+                "fix_cell_attempts": 0,
+            }
+        )
+
+        self.assertEqual(result["validation_cell_status"], "invalid")
+        self.assertEqual(result["fix_cell_attempts"], 1)
+
     def test_fix_syntax_error_with_fake_structured_response(self) -> None:
         fixed = FixedCell(
             cell_id="section_1_code_1",
@@ -165,7 +183,7 @@ class FixCellsOfflineTests(unittest.TestCase):
                     "expected_output": None,
                 }
             ],
-            "validation_errors": [
+            "validation_cell_errors": [
                 {
                     "cell_id": "section_1_code_1",
                     "error_type": "syntax_error",
@@ -173,13 +191,13 @@ class FixCellsOfflineTests(unittest.TestCase):
                     "message": "'(' was never closed",
                 }
             ],
-            "fix_attempts": 0,
+            "fix_cell_attempts": 0,
         }
 
         with patch("nodes.fix_cells_node.fix_llm", fake):
             result = fix_cells_node(state)
 
-        self.assertEqual(result["fix_attempts"], 1)
+        self.assertEqual(result["fix_cell_attempts"], 1)
         self.assertEqual(result["fixed_cell_ids"], ["section_1_code_1"])
         self.assertEqual(
             result["notebook_cells"][0]["source"],
