@@ -39,16 +39,10 @@ class State(TypedDict):
     target_column: str | None
 
     # Loại bài toán đã được xác nhận.
-    problem_type: (
-        Literal["regression", "classification"]
-        | None
-    )
+    problem_type: (Literal["regression", "classification"]| None)
 
     # Trạng thái xác nhận của người dùng.
-    approval_status: (
-        Literal["pending", "approved", "rejected"]
-        | None
-    )
+    approval_status: (Literal["pending", "approved", "rejected"]| None)
 
     # Phản hồi bổ sung của người dùng.
     user_feedback: str | None
@@ -64,10 +58,7 @@ class State(TypedDict):
     notebook_plan: dict | None
 
     # Trạng thái validation của plan.
-    plan_validation_status: (
-        Literal["pending", "valid", "invalid"]
-        | None
-    )
+    plan_validation_status: (Literal["pending", "valid", "invalid"]| None)
 
     # Danh sách lỗi của plan.
     plan_validation_errors: list[dict] | None
@@ -83,10 +74,7 @@ class State(TypedDict):
     notebook_cells: list[dict] | None
 
     # Trạng thái sinh cells.
-    generation_cell_status: (
-        Literal["pending", "success", "failed"]
-        | None
-    )
+    generation_cell_status: (Literal["pending", "success", "failed"]| None)
 
     # Danh sách lỗi phát sinh khi sinh từng section/cell.
     generation_cell_errors: list[dict] | None
