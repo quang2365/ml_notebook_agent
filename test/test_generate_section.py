@@ -32,7 +32,7 @@ class GenerateSectionTests(unittest.TestCase):
             "notebook_cells": [],
             "current_section_index": 0,
             "generated_section_ids": [],
-            "generation_cell_errors": [],
+            "section_generation_errors": [],
             "section_retry_attempts": 0,
         }
     @patch(
@@ -82,7 +82,7 @@ class GenerateSectionTests(unittest.TestCase):
 
         # Vẫn còn section 2.
         self.assertEqual(
-            result["generation_cell_status"],
+            result["section_generation_status"],
             "pending",
         )
     @patch(
@@ -148,7 +148,7 @@ class GenerateSectionTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            result["generation_cell_status"],
+            result["section_generation_status"],
             "success",
         )
     @patch(
@@ -203,7 +203,7 @@ class GenerateSectionTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            result["generation_cell_status"],
+            result["section_generation_status"],
             "failed",
         )
 
@@ -223,7 +223,7 @@ class SectionGenerationRouteTests(
                     "sections": [{}, {}],
                 },
                 "current_section_index": 1,
-                "generation_cell_status": (
+                "section_generation_status": (
                     "pending"
                 ),
             }
@@ -240,7 +240,7 @@ class SectionGenerationRouteTests(
                     "sections": [{}, {}],
                 },
                 "current_section_index": 2,
-                "generation_cell_status": (
+                "section_generation_status": (
                     "success"
                 ),
             }
@@ -257,9 +257,44 @@ class SectionGenerationRouteTests(
                     "sections": [{}, {}],
                 },
                 "current_section_index": 1,
-                "generation_cell_status": (
+                "section_generation_status": (
                     "failed"
                 ),
+                "section_retry_attempts": 3,
+            }
+        )
+
+        self.assertEqual(result, "failed")
+
+    def test_retry_failed_section_when_attempts_remain(
+        self,
+    ) -> None:
+        """Retry đúng section hiện tại khi vẫn còn lượt thử."""
+        result = route_after_section_generation(
+            {
+                "section_generation_status": "failed",
+                "section_retry_attempts": 1,
+                "current_section_index": 8,
+                "notebook_plan": {
+                    "sections": [{}] * 10,
+                },
+            }
+        )
+
+        self.assertEqual(result, "retry")
+
+    def test_stop_after_section_retry_limit(
+        self,
+    ) -> None:
+        """Dừng workflow khi section đã dùng hết lượt retry."""
+        result = route_after_section_generation(
+            {
+                "section_generation_status": "failed",
+                "section_retry_attempts": 3,
+                "current_section_index": 8,
+                "notebook_plan": {
+                    "sections": [{}] * 10,
+                },
             }
         )
 

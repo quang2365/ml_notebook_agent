@@ -134,7 +134,7 @@ class GenerateSectionsOfflineTests(unittest.TestCase):
             "notebook_cells": [],
             "current_section_index": 0,
             "generated_section_ids": [],
-            "generation_cell_errors": [],
+            "section_generation_errors": [],
             "section_retry_attempts": 0,
         }
 
@@ -147,7 +147,7 @@ class GenerateSectionsOfflineTests(unittest.TestCase):
             for _ in plan.sections:
                 result.update(generate_section_node(result))
 
-        self.assertEqual(result["generation_cell_status"], "success")
+        self.assertEqual(result["section_generation_status"], "success")
         self.assertEqual(len(result["notebook_cells"]), 8)
         self.assertEqual(len(fake.calls), 8)
 

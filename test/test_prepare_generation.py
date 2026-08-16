@@ -32,8 +32,8 @@ class PrepareGenerationTests(
                     "cell_id": "old_cell",
                 }
             ],
-            "generation_cell_status": "success",
-            "generation_cell_errors": [
+            "section_generation_status": "success",
+            "section_generation_errors": [
                 {
                     "message": "Old error",
                 }
@@ -51,7 +51,7 @@ class PrepareGenerationTests(
         )
 
         self.assertEqual(
-            result["generation_cell_status"],
+            result["section_generation_status"],
             "pending",
         )
 
@@ -61,7 +61,7 @@ class PrepareGenerationTests(
         )
 
         self.assertEqual(
-            result["generation_cell_errors"],
+            result["section_generation_errors"],
             [],
         )
 
@@ -95,12 +95,12 @@ class PrepareGenerationTests(
         result = prepare_generation_node({})
 
         self.assertEqual(
-            result["generation_cell_status"],
+            result["section_generation_status"],
             "failed",
         )
 
         self.assertEqual(
-            result["generation_cell_errors"][0][
+            result["section_generation_errors"][0][
                 "error_type"
             ],
             "missing_sections",
@@ -123,7 +123,7 @@ class PrepareGenerationTests(
         )
 
         self.assertEqual(
-            result["generation_cell_status"],
+            result["section_generation_status"],
             "failed",
         )
 

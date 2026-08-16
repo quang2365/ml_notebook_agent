@@ -1,4 +1,5 @@
 import json
+import os  #AI
 from uuid import uuid4  #AI
 
 from langchain_core.messages import HumanMessage
@@ -7,10 +8,21 @@ from langgraph.types import Command
 from rich.console import Console
 from rich.markdown import Markdown
 
-from graph import build_graph
-
-
 console = Console()
+
+
+def ask_use_deepseek() -> bool:
+    """Hỏi người chạy có muốn dùng DeepSeek V4 Flash hay không."""
+    answer = input(
+        "Sử dụng DeepSeek V4 Flash? [y/N]: "
+    ).strip().lower()
+
+    return answer in {
+        "y",
+        "yes",
+        "1",
+        "true",
+    }
 
 
 def print_json(
@@ -54,6 +66,21 @@ def print_last_message(
 
 
 def main() -> None:
+    # Phải chọn model trước khi import graph vì các node
+    # khởi tạo structured LLM ngay tại thời điểm import.  #AI
+    use_deepseek = ask_use_deepseek()  #AI
+    os.environ["USE_DEEPSEEK"] = (  #AI
+        "true" if use_deepseek else "false"
+    )
+
+    from graph import build_graph  #AI
+    from model.model import selected_model_name  #AI
+
+    console.print(
+        "Model đang sử dụng:",
+        selected_model_name(use_deepseek),
+    )
+
     # =========================================
     # 1. BUILD GRAPH
     # =========================================
@@ -99,8 +126,8 @@ def main() -> None:
         "plan_validation_errors": None,  #AI
         "fix_plan_attempts": 0,  #AI
         "notebook_cells": None,
-        "generation_cell_status": None,
-        "generation_cell_errors": [],  #AI
+        "section_generation_status": None,
+        "section_generation_errors": [],  #AI
         "current_section_index": 0,  #AI
         "generated_section_ids": [],  #AI
         "section_retry_attempts": 0,  #AI
@@ -443,7 +470,7 @@ def main() -> None:
     console.print(
     "Generation Status  :",
     final_result.get(
-        "generation_cell_status"
+        "section_generation_status"
     ),
 )
     # =========================================
@@ -457,7 +484,7 @@ def main() -> None:
         f"""
 Target              : {final_result.get("target_column")}
 Problem Type        : {final_result.get("problem_type")}
-Generation Status   : {final_result.get("generation_cell_status")}
+Generation Status   : {final_result.get("section_generation_status")}
 Notebook Cells      : {len(notebook_cells)}
 Validation Status   : {validation_cell_status}
 Validation Errors   : {len(validation_cell_errors)}

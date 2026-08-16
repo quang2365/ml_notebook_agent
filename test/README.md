@@ -21,6 +21,7 @@ Chạy riêng từng nhóm:
 .\.venv314\Scripts\python.exe -m unittest test.test_validation_and_routes -v
 .\.venv314\Scripts\python.exe -m unittest test.test_notebook_builder -v
 .\.venv314\Scripts\python.exe -m unittest test.test_full_rendered_notebook -v
+.\.venv314\Scripts\python.exe -m unittest test.test_model_selection -v
 ```
 
 ## `test_llm_nodes_offline.py`
@@ -71,6 +72,10 @@ Kiểm tra trực tiếp node sinh một section và route điều khiển vòng
   graph chuyển sang `validate_cells`.
 - `test_failed_generation_stops`: route trả `failed` khi generation thất bại,
   tránh tiếp tục với notebook chưa hoàn chỉnh.
+- `test_retry_failed_section_when_attempts_remain`: xác nhận route trả `retry`
+  và giữ nguyên section hiện tại khi vẫn còn lượt thử.
+- `test_stop_after_section_retry_limit`: xác nhận route trả `failed` khi số lần
+  thử đã đạt giới hạn, ngăn vòng lặp generation vô hạn.
 
 ## `test_validation_and_routes.py`
 
@@ -116,6 +121,15 @@ Giả lập notebook Machine Learning hoàn chỉnh gồm 10 section và 30 cell
 
 - `fakes.py`: cung cấp `FakeRunnable`, notebook plan và structured response giả.
 - `json_samples/`: chứa JSON mẫu cho JSON-to-cell và notebook builder.
+
+## `test_model_selection.py`
+
+- `test_create_deepseek_model_when_selected`: xác nhận lựa chọn DeepSeek dùng
+  model `deepseek-v4-flash`, endpoint DeepSeek và `DEEPSEEK_API_KEY`.
+- `test_keep_nvidia_model_when_deepseek_not_selected`: xác nhận lựa chọn mặc
+  định vẫn dùng NVIDIA Nemotron và `NVIDIA_API_KEY`.
+- `test_prompt_accepts_deepseek`: xác nhận câu trả lời `yes` bật DeepSeek.
+- `test_prompt_defaults_to_current_model`: xác nhận Enter giữ model hiện tại.
 
 Nếu test offline thành công nhưng `main.py` gặp `429` hoặc timeout, nguyên nhân
 thường thuộc API thật. Nếu test offline thất bại, cần sửa node, route, schema

@@ -63,7 +63,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
             "notebook_cells": [],
             "current_section_index": 0,
             "generated_section_ids": [],
-            "generation_cell_errors": [],
+            "section_generation_errors": [],
             "section_retry_attempts": 0,
         }
 
@@ -84,7 +84,7 @@ class FullRenderedNotebookTests(unittest.TestCase):
     def test_complete_render_contains_30_cells(self) -> None:
         result, fake = self._generate_offline()
 
-        self.assertEqual(result["generation_cell_status"], "success")
+        self.assertEqual(result["section_generation_status"], "success")
         self.assertEqual(len(result["notebook_cells"]), 30)
         self.assertEqual(len(fake.calls), 10)
 

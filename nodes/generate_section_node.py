@@ -42,8 +42,8 @@ def generate_section_node(
         )
 
         return {
-            "generation_cell_status": "failed",
-            "generation_cell_errors": [
+            "section_generation_status": "failed",
+            "section_generation_errors": [
                 {
                     "error_type": "missing_sections",
                     "section_id": None,
@@ -79,8 +79,8 @@ def generate_section_node(
         )
 
         return {
-            "generation_cell_status": "failed",
-            "generation_cell_errors": [
+            "section_generation_status": "failed",
+            "section_generation_errors": [
                 {
                     "error_type": (
                         "invalid_section_index"
@@ -96,7 +96,7 @@ def generate_section_node(
     # section đã được sinh xong.
     if current_index >= len(sections):
         return {
-            "generation_cell_status": "success",
+            "section_generation_status": "success",
             "section_retry_attempts": 0, #giai thich
             "error": None,
             "messages": [
@@ -271,7 +271,7 @@ def generate_section_node(
         "section_retry_attempts": 0,
 
         # Pending nếu còn section, success nếu đã hết.
-        "generation_cell_status": (
+        "section_generation_status": (
             generation_status
         ),
 
@@ -307,7 +307,7 @@ def build_generation_failure(
     """
 
     old_errors = (
-        state.get("generation_cell_errors")
+        state.get("section_generation_errors")
         or []
     )
 
@@ -346,9 +346,9 @@ def build_generation_failure(
             or []
         ),
 
-        "generation_cell_status": "failed",
+        "section_generation_status": "failed",
 
-        "generation_cell_errors": [
+        "section_generation_errors": [
             *old_errors,
             new_error,
         ],

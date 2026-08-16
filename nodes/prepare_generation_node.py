@@ -21,9 +21,9 @@ def prepare_generation_node(state:State) ->dict:
         )
 
         return {
-            "generation_cell_status": "failed",
+            "section_generation_status": "failed",
 
-            "generation_cell_errors": [
+            "section_generation_errors": [
                 {
                     "error_type": "missing_sections",
                     "section_id": None,
@@ -43,9 +43,9 @@ def prepare_generation_node(state:State) ->dict:
     return {
         "notebook_cells": [],
 
-        "generation_cell_status": "pending",
+        "section_generation_status": "pending",
 
-        "generation_cell_errors": [],
+        "section_generation_errors": [],
 
         "current_section_index": 0,
 

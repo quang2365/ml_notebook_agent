@@ -48,7 +48,7 @@ def build_graph():
     builder.add_conditional_edges("validate_plan_node",route_after_plan_validation,{"valid":"prepare_generation","fix":"fix_plan_node","failed":END})
     builder.add_edge("fix_plan_node","validate_plan_node")
     builder.add_edge("prepare_generation","generate_section")
-    builder.add_conditional_edges("generate_section",route_after_section_generation,{"continue":"generate_section","complete":"validate_cells","failed":END})
+    builder.add_conditional_edges("generate_section",route_after_section_generation,{"continue":"generate_section","retry":"generate_section","complete":"validate_cells","failed":END})
     builder.add_conditional_edges("validate_cells",route_after_validation_cell,{"valid":"notebook_builder","fix":"fix_cells","failed":END})
     builder.add_edge("fix_cells","validate_cells",)
     builder.add_edge("notebook_builder",END)

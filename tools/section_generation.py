@@ -10,7 +10,10 @@ from schemas.notebook_cell_schema import GeneratedSection
 from state import State
 
 
-section_llm = llm.with_structured_output(GeneratedSection)
+section_llm = llm.with_structured_output(
+    GeneratedSection,
+    method="function_calling",  #AI: tránh response_format=json_schema
+)
 
 
 SECTION_SYSTEM_PROMPT = """

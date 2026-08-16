@@ -74,10 +74,10 @@ class State(TypedDict):
     notebook_cells: list[dict] | None
 
     # Trạng thái sinh cells.
-    generation_cell_status: (Literal["pending", "success", "failed"]| None)
+    section_generation_status: (Literal["pending", "success", "failed"]| None)
 
     # Danh sách lỗi phát sinh khi sinh từng section/cell.
-    generation_cell_errors: list[dict] | None
+    section_generation_errors: list[dict] | None
 
     # Vị trí section tiếp theo cần được sinh.
     current_section_index: int

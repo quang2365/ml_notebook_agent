@@ -15,7 +15,8 @@ MAX_CELL_FIX_RETRIES = 3
 
 
 fix_llm = llm.with_structured_output(
-    FixedCell
+    FixedCell,
+    method="function_calling",  #AI: tương thích NVIDIA và DeepSeek
 )
 
 
@@ -195,7 +196,7 @@ def fix_cells_node(
         "notebook_cells": updated_cells,
 
         # Validator tiếp theo sẽ xác định lại
-        "validation__cell_status": "pending",
+        "validation_cell_status": "pending",  #AI: đặt lại để validator kiểm tra
         "validation_cell_errors": None,
 
         "fix_cell_attempts": new_fix_attempts,
