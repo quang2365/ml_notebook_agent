@@ -103,9 +103,11 @@ def main() -> None:
         "generation_cell_errors": [],  #AI
         "current_section_index": 0,  #AI
         "generated_section_ids": [],  #AI
+        "section_retry_attempts": 0,  #AI
 
         "notebook_path": "output/test.ipynb",  #AI
         "build_status": "pending",  #AI
+        "build_error": None,  #AI
 
         "validation_cell_status": None,
         "validation_cell_errors": None,

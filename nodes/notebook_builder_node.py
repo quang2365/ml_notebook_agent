@@ -15,6 +15,7 @@ def notebook_builder(state: State) -> dict:
 
             "messages": [AIMessage(content=error)],
             "error": error,
+            "build_error": error,  #AI
             "build_status": "failed",  #AI
         }
     cells = [
@@ -26,6 +27,7 @@ def notebook_builder(state: State) -> dict:
         "notebook_cells": cells,
         "notebook_path": notebook_path,
         "build_status": "success",  #AI
+        "build_error": None,  #AI
         "error": None,  #AI
         "messages": [  #AI
             AIMessage(

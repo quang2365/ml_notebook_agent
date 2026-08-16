@@ -46,6 +46,7 @@ class NotebookBuilderTests(unittest.TestCase):
             result = notebook_builder(state)
 
             self.assertEqual(result["build_status"], "success")
+            self.assertIsNone(result["build_error"])
             self.assertTrue(output_path.exists())
 
             notebook = json.loads(

@@ -97,6 +97,9 @@ class State(TypedDict):
     # ID của các section đã được sinh thành công.
     generated_section_ids: list[str]
 
+    # Số lần retry API của section hiện tại.
+    section_retry_attempts: int
+
     # ==================================================
     # 6. CELL VALIDATION VÀ REPAIR
     # ==================================================
@@ -131,6 +134,9 @@ class State(TypedDict):
         Literal["pending", "success", "failed"]
         | None
     )
+
+    # Lỗi riêng xảy ra trong quá trình tạo file notebook.
+    build_error: str | None
 
     # ==================================================
     # 8. GLOBAL ERROR

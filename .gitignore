@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+.venv*/
 .env
-.ipynb
+*.ipynb
+output/
