@@ -99,13 +99,16 @@ def main() -> None:
         "plan_validation_errors": None,  #AI
         "fix_plan_attempts": 0,  #AI
         "notebook_cells": None,
+        "generation_cell_status": None,
+        "generation_cell_errors": [],  #AI
+        "current_section_index": 0,  #AI
+        "generated_section_ids": [],  #AI
+
         "notebook_path": "output/test.ipynb",  #AI
         "build_status": "pending",  #AI
 
         "validation_cell_status": None,
         "validation_cell_errors": None,
-
-        "generation_cell_status": None,
 
         "fix_cell_attempts": 0,
         "fixed_cell_ids": None,

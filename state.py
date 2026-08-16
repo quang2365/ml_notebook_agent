@@ -88,6 +88,15 @@ class State(TypedDict):
         | None
     )
 
+    # Danh sách lỗi phát sinh khi sinh từng section/cell.
+    generation_cell_errors: list[dict] | None
+
+    # Vị trí section tiếp theo cần được sinh.
+    current_section_index: int
+
+    # ID của các section đã được sinh thành công.
+    generated_section_ids: list[str]
+
     # ==================================================
     # 6. CELL VALIDATION VÀ REPAIR
     # ==================================================
