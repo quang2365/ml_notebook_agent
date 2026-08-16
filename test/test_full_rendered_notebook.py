@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from nodes.generate_cells_node import generate_cells_node
+from nodes.generate_section_node import generate_section_node
 from nodes.notebook_builder_node import notebook_builder
 from nodes.validate_cells_node import validate_cells_node
 from test.fakes import FakeRunnable, make_full_rendered_sections, make_plan
@@ -60,17 +60,24 @@ class FullRenderedNotebookTests(unittest.TestCase):
                     "skewness": 0.98,
                 },
             },
+            "notebook_cells": [],
+            "current_section_index": 0,
+            "generated_section_ids": [],
+            "generation_cell_errors": [],
+            "section_retry_attempts": 0,
         }
 
     def _generate_offline(self) -> tuple[dict, FakeRunnable]:
         fake = FakeRunnable(self.rendered_sections.copy())
 
         with (
-            patch("nodes.generate_cells_node.section_llm", fake),
-            patch("nodes.generate_cells_node.time.sleep", return_value=None),
+            patch("tools.section_generation.section_llm", fake),
+            patch("tools.section_generation.time.sleep", return_value=None),
             patch("builtins.print"),
         ):
-            result = generate_cells_node(self.state)
+            result = dict(self.state)
+            for _ in self.plan.sections:
+                result.update(generate_section_node(result))
 
         return result, fake
 
