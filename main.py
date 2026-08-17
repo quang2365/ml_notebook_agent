@@ -148,7 +148,7 @@ def main() -> None:
         "fix_cell_attempts": 0,
         "fixed_cell_ids": None,
         "fix_cell_failures": None,
-
+        "execution_fix_attempts": 0,
         "error": None,
     }
 

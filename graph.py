@@ -16,12 +16,14 @@ from nodes.review_pipeline_node import review_pipeline_node
 from nodes.fix_cells_node import fix_cells_node
 from nodes.notebook_builder_node import notebook_builder
 from nodes.execute_notebook_note import execute_notebook_node
+from nodes.fix_execution_cell_node import fix_execution_cell_node
 from route.route_after_validation_cell import route_after_validation_cell
 from route.route_after_section_generation import route_after_section_generation
 from route.route_after_review_proplem import route_after_review_proplem
 from route.route_after_plan_validation import route_after_plan_validation
 from route.route_after_review_pipeline import route_after_review_pipeline
 from route.route_after_stage import route_after_stage
+from route.route_after_execution import route_after_execution
 from state import State
 
 def build_graph():
@@ -42,6 +44,7 @@ def build_graph():
     builder.add_node("fix_cells",fix_cells_node)
     builder.add_node("notebook_builder",notebook_builder)
     builder.add_node("execute_notebook",execute_notebook_node)
+    builder.add_node("fix_execution_cell",fix_execution_cell_node)
     builder.add_edge(START,"inspect_data")
     builder.add_conditional_edges("inspect_data",route_after_stage,{"success":"analyze_data","failed":END})
     builder.add_conditional_edges("analyze_data",route_after_stage,{"success":"propose_problem","failed":END})
@@ -57,7 +60,8 @@ def build_graph():
     builder.add_conditional_edges("review_pipeline",route_after_review_pipeline,{"valid":"notebook_builder","invalid":"fix_cells","failed":END})
     builder.add_edge("fix_cells","validate_cells",)
     builder.add_conditional_edges("notebook_builder",route_after_stage,{"success":"execute_notebook","failed":END})
-    builder.add_edge("execute_notebook",END)  #AI
+    builder.add_conditional_edges("execute_notebook",route_after_execution,{"success": END,"fix":"fix_execution_cell","failed":END})
+    builder.add_edge("fix_execution_cell","validate_cells",)
     graph = builder.compile(checkpointer=InMemorySaver())
 
     return graph

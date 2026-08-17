@@ -75,12 +75,22 @@ def execute_notebook_node(
 
     except CellExecutionError as exc:
         message = str(exc)
-
+        #AI: nbclient đã ghi output lỗi vào notebook trước khi raise.
+        failed_cells = extract_failed_cell(notebook) or {}
+        failed_cell_id = failed_cells.get("cell_id")
+        exception_name = failed_cells.get("exception_name")
+        exception_value = failed_cells.get("exception_value")
+        traceback_text = failed_cells.get("traceback")
         return {
             "execution_status": "failed",
             "execution_error": {
                 "error_type": "cell_execution_error",
+                "cell_id": failed_cell_id,
+                "exception_name": exception_name,
+                "exception_value": exception_value,
                 "message": message,
+                "traceback": traceback_text or message,
+                "source": failed_cells.get("source"),
             },
             "error": message,
             "messages": [
@@ -102,3 +112,69 @@ def execute_notebook_node(
                 AIMessage(content=message)
             ],
         }
+def extract_failed_cell(
+    notebook,
+) -> dict | None:
+    """
+    Tìm cell phát sinh runtime error trong notebook đã chạy.
+
+    nbclient ghi error vào outputs của cell trước khi ném
+    CellExecutionError.
+    """
+
+    #AI: Duyệt ngược để lấy cell lỗi gần nhất.
+    for cell in reversed(notebook.cells):
+        if cell.get("cell_type") != "code":
+            continue
+
+        outputs = cell.get("outputs") or []
+
+        for output in reversed(outputs):
+            if output.get("output_type") != "error":
+                continue
+
+            metadata = cell.get("metadata") or {}
+
+            agent_metadata = (
+                metadata.get("agent")
+                or {}
+            )
+            failed_cell_id = (
+                agent_metadata.get("cell_id")
+                or cell.get("id")
+            )
+
+            traceback_lines = (
+                output.get("traceback")
+                or []
+            )
+
+            return {
+                "cell_id": failed_cell_id,
+                "exception_name": output.get(
+                    "ename"
+                ),
+                "exception_value": output.get(
+                    "evalue"
+                ),
+                "traceback": "\n".join(
+                    traceback_lines
+                ),
+                "source": normalize_source(
+                    cell.get("source")
+                ),
+            }
+
+    return None
+
+
+def normalize_source(
+    source: str | list | None,
+) -> str:
+    if source is None:
+        return ""
+
+    if isinstance(source, list):
+        return "".join(source)
+
+    return str(source)

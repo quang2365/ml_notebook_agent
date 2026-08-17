@@ -155,6 +155,10 @@ class State(TypedDict):
     # Thông tin lỗi khi notebook thực thi thất bại.
     execution_error: dict | None
 
+    execution_attempts: int
+
+    execution_fix_attempts: int
+
     # ==================================================
     # 10. GLOBAL ERROR
     # ==================================================

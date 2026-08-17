@@ -27,32 +27,21 @@ class NotebookSection(BaseModel):
 
 
 class NotebookPlan(BaseModel):
-    notebook_title: str = Field(
-        description="Tên notebook."
-    )
+    notebook_title: str = Field(description="Tên notebook.")
 
-    target_column: str = Field(
-        description="Cột target đã xác nhận."
-    )
+    target_column: str = Field(description="Cột target đã xác nhận.")
 
-    problem_type: str = Field(
-        description=(
+    problem_type: str = Field(description=(
             "Loại bài toán regression "
             "hoặc classification."
         )
     )
 
-    objective: str = Field(
-        description="Mục tiêu tổng thể của notebook."
-    )
+    objective: str = Field(description="Mục tiêu tổng thể của notebook.")
 
-    evaluation_metrics: list[str] = Field(
-        description="Các metric sẽ sử dụng."
-    )
+    evaluation_metrics: list[str] = Field(description="Các metric sẽ sử dụng.")
 
-    candidate_models: list[str] = Field(
-        description="Các mô hình dự kiến thử nghiệm."
-    )
+    candidate_models: list[str] = Field(description="Các mô hình dự kiến thử nghiệm.")
 
     sections: list[NotebookSection] = Field(
     min_length=8,
