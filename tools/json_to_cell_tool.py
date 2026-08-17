@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+import re  #AI
 from typing import Any
 
 
 ALLOWED_CELL_TYPES = {"code", "markdown"}
+MAX_NOTEBOOK_CELL_ID_LENGTH = 64  #AI
 
 
 def _source_lines(source: str) -> list[str]:
@@ -18,6 +20,24 @@ def _source_lines(source: str) -> list[str]:
     if lines and not lines[-1].endswith("\n"):
         lines[-1] += "\n"
     return lines
+
+
+def _notebook_cell_id(cell_data: dict[str, Any]) -> str:
+    """Convert agent cell_id to a valid, deterministic nbformat cell id."""
+    raw_cell_id = cell_data.get("cell_id")
+    if not isinstance(raw_cell_id, str) or not raw_cell_id.strip():
+        raise ValueError("Cell JSON must contain a non-empty cell_id.")
+
+    normalized = re.sub(
+        r"[^A-Za-z0-9_-]",
+        "-",
+        raw_cell_id.strip(),
+    )[:MAX_NOTEBOOK_CELL_ID_LENGTH]
+
+    if not normalized:
+        raise ValueError("cell_id cannot be converted to a valid notebook id.")
+
+    return normalized
 
 
 def json_object_to_cell(cell_data: dict[str, Any]) -> dict[str, Any]:
@@ -36,8 +56,16 @@ def json_object_to_cell(cell_data: dict[str, Any]) -> dict[str, Any]:
         raise TypeError("Cell source must be a string.")
 
     cell = {
+        "id": _notebook_cell_id(cell_data),  #AI
         "cell_type": cell_type,
-        "metadata": {},
+        #AI: Giữ metadata agent để execution error truy ngược về section.
+        "metadata": {
+            "agent": {
+                "cell_id": cell_data.get("cell_id"),
+                "section_id": cell_data.get("section_id"),
+                "title": cell_data.get("title"),
+            }
+        },
         "source": _source_lines(source),
     }
 

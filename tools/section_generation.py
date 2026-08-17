@@ -52,6 +52,29 @@ QUY TẮC BẮT BUỘC:
 22. Không fit preprocessor riêng trên test set.
 23. Không fit preprocessing có học tham số trên
     toàn bộ dataset trước train/test split.
+24. PREVIOUS NOTEBOOK CODE chứa code thật đã được sinh ở các section trước.
+25. Phải tái sử dụng chính xác tên biến, kiểu dữ liệu, tên Pipeline step
+    và cấu trúc đã tồn tại trong PREVIOUS NOTEBOOK CODE.
+26. Không được định nghĩa lại biến cũ với ý nghĩa khác.
+27. Nếu section trước tạo biến dữ liệu mới như X_train_fe/X_test_fe,
+    mọi model phụ thuộc các feature đó phải fit/predict bằng đúng biến mới.
+28. Tên step dùng với named_steps phải trùng tên step lúc tạo Pipeline.
+29. Các key trong model_results phải nhất quán: model, mae, rmse, r2.
+30. Trước khi trả kết quả, kiểm tra mọi biến được sử dụng đã được tạo
+    trong PREVIOUS NOTEBOOK CODE hoặc section hiện tại.
+31. Luôn sử dụng chính xác DATASET PATH được cung cấp; không tự thêm
+    hoặc bỏ ../ hay ./.
+32. model_results luôn là list[dict] và chỉ được khởi tạo đúng một lần.
+33. Mỗi model phải append metric vào model_results ngay sau khi đánh giá;
+    không chờ section so sánh mới tái dựng metric từ biến có thể bị ghi đè.
+34. Không được đổi kiểu dữ liệu của model_results, trained_models,
+    predictions hoặc các biến trong VARIABLE CONTRACT.
+35. Mọi Pipeline dùng tên step chuẩn: preprocessor và model.
+36. Key model phải giống nhau trong trained_models, predictions và
+    trường model của model_results.
+37. Section so sánh chỉ đọc model_results; không được gán lại biến này.
+38. RMSE phải dùng np.sqrt(mean_squared_error(...)) để tương thích
+    nhiều phiên bản scikit-learn.
 """
 
 
@@ -125,21 +148,78 @@ predictions["model_name"]
 Metric của model phải được thêm vào:
 
 model_results.append({
-    "model": "...",
-    ...
+    "model": model_name,
+    "mae": mae,
+    "rmse": rmse,
+    "r2": r2,
 })
 
-6. Random state:
+Quy tắc bắt buộc:
+
+- model_results luôn là list[dict].
+- Chỉ khởi tạo model_results = [] đúng một lần.
+- Không được gán lại model_results thành dict hoặc DataFrame.
+- Mỗi model phải append kết quả ngay trong section đánh giá model đó,
+  trước khi section tiếp theo có thể ghi đè các biến metric tạm thời.
+- Section so sánh phải tạo bảng bằng:
+
+model_comparison = pd.DataFrame(model_results).set_index("model")
+
+- Section so sánh không được tái dựng model_results từ mae_test,
+  rmse_test hoặc r2_test của section cuối.
+- Cùng một model_name phải được dùng làm key trong trained_models,
+  predictions và trường model trong model_results.
+
+6. Pipeline contract:
+
+Mọi sklearn Pipeline phải ưu tiên hai step chuẩn:
+
+Pipeline([
+    ("preprocessor", preprocessor),
+    ("model", estimator),
+])
+
+Khi truy cập estimator phải dùng:
+
+pipeline.named_steps["model"]
+
+Không trộn các tên step model, regressor, estimator cho cùng vai trò.
+
+7. Feature engineering contract:
+
+Nếu tạo X_train_fe và X_test_fe thì mọi pipeline cần engineered feature
+phải fit/predict bằng đúng X_train_fe và X_test_fe.
+
+Nếu feature engineering nằm bên trong Pipeline thì tiếp tục sử dụng
+X_train và X_test. Chỉ chọn một chiến lược nhất quán cho toàn notebook.
+
+8. Metric compatibility:
+
+RMSE phải được tính bằng:
+
+rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+
+Không dùng squared=False vì không tương thích mọi phiên bản sklearn.
+
+9. Random state:
 
 RANDOM_STATE = 42
 
 Mọi model hoặc train/test split hỗ trợ random_state
 phải sử dụng RANDOM_STATE.
 
-7. Một section không được sử dụng biến của
+10. Một section không được sử dụng biến của
 section sau nó.
 
-8. Không tự đổi tên các biến đã quy định ở trên.
+11. Không tự đổi tên hoặc đổi kiểu dữ liệu các biến đã quy định ở trên.
+
+12. Dataset path:
+
+Luôn đọc dữ liệu bằng chính dataset_path được cung cấp:
+
+df = pd.read_csv(dataset_path)
+
+Không tạo DATASET_PATH thứ hai và không tự thay ./ thành ../.
 """
 
 
@@ -169,6 +249,7 @@ def generate_one_section(
     target_column: str,
     problem_type: str,
     dataset_context: dict,
+    previous_code_cells: list[dict],
 ) -> dict:
     """Generate and validate one section, retrying transient failures."""
     user_prompt = f"""
@@ -190,7 +271,10 @@ PROBLEM TYPE:
 {problem_type}
 
 DATASET CONTEXT:
-{json.dumps(dataset_context, ensure_ascii=False, default=str, indent=2)}
+{json.dumps(dataset_context, ensure_ascii=False, default=str)}
+
+PREVIOUS NOTEBOOK CODE:
+{json.dumps(previous_code_cells, ensure_ascii=False, default=str)}
 
 VARIABLE CONTRACT:
 {NOTEBOOK_VARIABLE_CONTRACT}

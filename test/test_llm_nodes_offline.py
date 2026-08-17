@@ -11,12 +11,19 @@ from nodes.fix_cells_node import fix_cells_node
 from nodes.fix_plan_node import fix_plan_node
 from nodes.generate_section_node import generate_section_node
 from nodes.plan_notebook_node import plan_notebook_node
+from nodes.propose_problem_node import propose_problem_node
 from schemas.fixed_cell_schema import FixedCell
 from test.fakes import FakeRunnable, make_generated_section, make_plan
 from tools.section_generation import build_dataset_context
 
 
 class AnalyzeDatasetOfflineTests(unittest.TestCase):
+    def test_missing_summary_returns_controlled_error(self) -> None:
+        result = analyze_dataset_note({"summary": None})
+
+        self.assertIn("error", result)
+        self.assertIsInstance(result["messages"], list)
+
     def test_analyze_dataset_uses_fake_llm(self) -> None:
         fake = FakeRunnable(
             [AIMessage(content="Offline dataset analysis")]
@@ -36,6 +43,17 @@ class AnalyzeDatasetOfflineTests(unittest.TestCase):
         self.assertEqual(result["summary_llm"], "Offline dataset analysis")
         self.assertEqual(len(fake.calls), 1)
         self.assertEqual(len(fake.calls[0]["input"]), 2)
+
+
+class ProposeProblemTests(unittest.TestCase):
+    def test_missing_candidates_returns_controlled_error(self) -> None:
+        result = propose_problem_node(
+            {"summary": {"target_candidates": []}}
+        )
+
+        self.assertIsNone(result["problem_proposal"])
+        self.assertEqual(result["approval_status"], "rejected")
+        self.assertIsNotNone(result["error"])
 
 
 class PlanNodeOfflineTests(unittest.TestCase):
@@ -151,6 +169,20 @@ class GenerateSectionsOfflineTests(unittest.TestCase):
         self.assertEqual(len(result["notebook_cells"]), 8)
         self.assertEqual(len(fake.calls), 8)
 
+        first_prompt = fake.calls[0]["input"][1].content
+        second_prompt = fake.calls[1]["input"][1].content
+        self.assertIn("PREVIOUS NOTEBOOK CODE:\n[]", first_prompt)
+        self.assertIn('dataset_path = \\"./data/housing.csv\\"', second_prompt)
+        self.assertIn("model_results luôn là list[dict]", second_prompt)
+        self.assertIn(
+            'pd.DataFrame(model_results).set_index("model")',
+            second_prompt,
+        )
+        self.assertIn(
+            "Không được gán lại model_results thành dict",
+            second_prompt,
+        )
+
 
 class FixCellsOfflineTests(unittest.TestCase):
     def test_fix_without_validation_errors_uses_cell_status(self) -> None:
@@ -211,6 +243,121 @@ class FixCellsOfflineTests(unittest.TestCase):
             "print('fixed')",
         )
         self.assertEqual(len(fake.calls), 1)
+
+    def test_fix_undefined_best_model_with_previous_context(self) -> None:
+        fixed = FixedCell(
+            cell_id="section_9_best_residual",
+            source=(
+                "best_model = trained_models[best_model_name]\n"
+                "prediction = best_model.predict(X_test)"
+            ),
+            changes="Use the trained model selected by best_model_name.",
+        )
+        fake = FakeRunnable([fixed])
+        state = {
+            "target_column": "median_house_value",
+            "problem_type": "regression",
+            "notebook_cells": [
+                {
+                    "cell_id": "section_8_models",
+                    "section_id": "section_8",
+                    "cell_type": "code",
+                    "title": "Select best model",
+                    "source": (
+                        "class DummyModel:\n"
+                        "    pass\n"
+                        "trained_models = {}\n"
+                        "best_model_name = 'random_forest'\n"
+                        "X_test = [1]\n"
+                        "trained_models[best_model_name] = DummyModel()"
+                    ),
+                },
+                {
+                    "cell_id": "section_9_best_residual",
+                    "section_id": "section_9",
+                    "cell_type": "code",
+                    "title": "Analyze residuals",
+                    "source": "prediction = best_model.predict(X_test)",
+                    "purpose": "Analyze the selected model.",
+                },
+            ],
+            "validation_cell_errors": [
+                {
+                    "cell_id": "section_9_best_residual",
+                    "error_type": "undefined_variable",
+                    "variable": "best_model",
+                    "message": (
+                        "Biến `best_model` được sử dụng trước khi được định nghĩa."
+                    ),
+                }
+            ],
+            "fix_cell_attempts": 0,
+        }
+
+        with patch("nodes.fix_cells_node.fix_llm", fake):
+            result = fix_cells_node(state)
+
+        self.assertEqual(
+            result["fixed_cell_ids"],
+            ["section_9_best_residual"],
+        )
+        self.assertEqual(result["fix_cell_failures"], [])
+        self.assertIn(
+            "trained_models[best_model_name]",
+            result["notebook_cells"][1]["source"],
+        )
+        prompt = fake.calls[0]["input"][1].content
+        self.assertIn("PREVIOUS CODE CELLS", prompt)
+        self.assertIn("trained_models", prompt)
+        self.assertIn("best_model_name", prompt)
+
+    def test_rejects_fix_that_keeps_undefined_variable(self) -> None:
+        unchanged = FixedCell(
+            cell_id="section_9_best_residual",
+            source="prediction = best_model.predict(X_test)",
+            changes="No effective change.",
+        )
+        fake = FakeRunnable([unchanged])
+        state = {
+            "notebook_cells": [
+                {
+                    "cell_id": "section_8_context",
+                    "section_id": "section_8",
+                    "cell_type": "code",
+                    "title": "Context",
+                    "source": "X_test = [1]",
+                },
+                {
+                    "cell_id": "section_9_best_residual",
+                    "section_id": "section_9",
+                    "cell_type": "code",
+                    "title": "Residuals",
+                    "source": "prediction = best_model.predict(X_test)",
+                    "purpose": "Test rejection.",
+                },
+            ],
+            "validation_cell_errors": [
+                {
+                    "cell_id": "section_9_best_residual",
+                    "error_type": "undefined_variable",
+                    "message": "best_model is undefined",
+                }
+            ],
+            "fix_cell_attempts": 0,
+        }
+
+        with patch("nodes.fix_cells_node.fix_llm", fake):
+            result = fix_cells_node(state)
+
+        self.assertEqual(result["fixed_cell_ids"], [])
+        self.assertEqual(
+            result["fix_cell_failures"][0]["cell_id"],
+            "section_9_best_residual",
+        )
+        self.assertIn(
+            "vẫn còn lỗi dependency",
+            result["fix_cell_failures"][0]["message"],
+        )
 
 class DatasetContextTests(unittest.TestCase):
     def test_build_dataset_context(self) -> None:

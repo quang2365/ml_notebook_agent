@@ -136,8 +136,14 @@ def main() -> None:
         "build_status": "pending",  #AI
         "build_error": None,  #AI
 
+        "execution_status": "pending",  #AI
+        "execution_error": None,  #AI
+
         "validation_cell_status": None,
         "validation_cell_errors": None,
+
+        "pipeline_review_status": "pending",  #AI
+        "pipeline_review_errors": [],  #AI
 
         "fix_cell_attempts": 0,
         "fixed_cell_ids": None,
@@ -491,6 +497,10 @@ Validation Errors   : {len(validation_cell_errors)}
 Fix Attempts        : {fix_cell_attempts}
 Fixed Cells         : {len(fixed_cell_ids)}
 Fix Failures        : {len(fix_cell_failures)}
+Pipeline Review     : {final_result.get("pipeline_review_status")}
+Pipeline Errors     : {len(final_result.get("pipeline_review_errors") or [])}
+Execution Status    : {final_result.get("execution_status")}
+Execution Error     : {final_result.get("execution_error")}
 
         """
     )

@@ -8,6 +8,8 @@ from nodes.validate_cells_node import validate_cells_node
 from nodes.validate_plan_node import validate_plan_node
 from route.route_after_plan_validation import route_after_plan_validation
 from route.route_after_validation_cell import route_after_validation_cell
+from route.route_after_review_pipeline import route_after_review_pipeline
+from route.route_after_stage import route_after_stage
 from test.fakes import make_agent_cell, make_plan
 
 
@@ -84,6 +86,39 @@ class CellValidationTests(unittest.TestCase):
 
 
 class RouteTests(unittest.TestCase):
+    def test_stage_route(self) -> None:
+        self.assertEqual(route_after_stage({"error": None}), "success")
+        self.assertEqual(route_after_stage({"error": "boom"}), "failed")
+
+    def test_pipeline_review_route_limits_fixes(self) -> None:
+        self.assertEqual(
+            route_after_review_pipeline(
+                {
+                    "pipeline_review_status": "valid",
+                    "fix_cell_attempts": 0,
+                }
+            ),
+            "valid",
+        )
+        self.assertEqual(
+            route_after_review_pipeline(
+                {
+                    "pipeline_review_status": "invalid",
+                    "fix_cell_attempts": 2,
+                }
+            ),
+            "invalid",
+        )
+        self.assertEqual(
+            route_after_review_pipeline(
+                {
+                    "pipeline_review_status": "invalid",
+                    "fix_cell_attempts": 3,
+                }
+            ),
+            "failed",
+        )
+
     def test_plan_route(self) -> None:
         self.assertEqual(
             route_after_plan_validation(

@@ -24,7 +24,7 @@ def notebook_builder(state: State) -> dict:
     ]
     write_cells_to_ipynb(cells,notebook_path)
     return {
-        "notebook_cells": cells,
+        #AI: Không ghi đè cell nội bộ bằng cell định dạng nbformat.
         "notebook_path": notebook_path,
         "build_status": "success",  #AI
         "build_error": None,  #AI

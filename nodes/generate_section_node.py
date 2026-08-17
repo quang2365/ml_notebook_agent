@@ -171,6 +171,22 @@ def generate_section_node(
         state
     )
 
+    #AI: Chỉ gửi code đã sinh ở các section trước cho LLM.
+    # Markdown, output và message không tham gia context để tiết kiệm token.
+    previous_code_cells = [
+        {
+            "cell_id": cell.get("cell_id"),
+            "section_id": cell.get("section_id"),
+            "title": cell.get("title"),
+            "source": cell.get("source"),
+        }
+        for cell in (
+            state.get("notebook_cells")
+            or []
+        )
+        if cell.get("cell_type") == "code"
+    ]
+
     # ==================================================
     # 5. GENERATE ĐÚNG MỘT SECTION
     # ==================================================
@@ -182,6 +198,7 @@ def generate_section_node(
         target_column=target_column,
         problem_type=problem_type,
         dataset_context=dataset_context,
+        previous_code_cells=previous_code_cells,
     )
 
     # generate_one_section đã tự retry API.

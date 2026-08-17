@@ -22,6 +22,7 @@ Chạy riêng từng nhóm:
 .\.venv314\Scripts\python.exe -m unittest test.test_notebook_builder -v
 .\.venv314\Scripts\python.exe -m unittest test.test_full_rendered_notebook -v
 .\.venv314\Scripts\python.exe -m unittest test.test_model_selection -v
+.\.venv314\Scripts\python.exe -m unittest test.test_execute_notebook -v
 ```
 
 ## `test_llm_nodes_offline.py`
@@ -41,6 +42,11 @@ Kiểm tra các node thường cần gọi LLM nhưng thay LLM thật bằng d�
   không có lỗi đầu vào vẫn trả đúng cell status và tăng số lần fix.
 - `test_fix_syntax_error_with_fake_structured_response`: đưa code cell lỗi cho
   LLM giả và xác nhận source được thay bằng code đã sửa.
+- `test_fix_undefined_best_model_with_previous_context`: tái hiện lỗi
+  `best_model`, xác nhận fixer nhận previous code/available names và sửa bằng
+  model đã được lưu trong `trained_models`.
+- `test_rejects_fix_that_keeps_undefined_variable`: xác nhận bản sửa compile
+  được nhưng vẫn còn undefined variable không bị ghi nhận là sửa thành công.
 - `test_build_dataset_context`: xác nhận context mỗi section chỉ chứa thông tin
   dataset và target cần thiết.
 - `test_build_dataset_context_with_empty_state`: xác nhận context builder không
@@ -130,6 +136,17 @@ Giả lập notebook Machine Learning hoàn chỉnh gồm 10 section và 30 cell
   định vẫn dùng NVIDIA Nemotron và `NVIDIA_API_KEY`.
 - `test_prompt_accepts_deepseek`: xác nhận câu trả lời `yes` bật DeepSeek.
 - `test_prompt_defaults_to_current_model`: xác nhận Enter giữ model hiện tại.
+
+## `test_execute_notebook.py`
+
+- `test_missing_notebook_path`: xác nhận node báo lỗi khi State chưa có đường
+  dẫn notebook.
+- `test_notebook_file_does_not_exist`: xác nhận node báo lỗi khi file notebook
+  không tồn tại.
+- `test_successful_execution`: giả lập kernel thực thi thành công và xác nhận
+  node cập nhật `execution_status=success`.
+- `test_cell_execution_error`: giả lập lỗi runtime trong cell và xác nhận node
+  lưu lỗi dưới `execution_error`.
 
 Nếu test offline thành công nhưng `main.py` gặp `429` hoặc timeout, nguyên nhân
 thường thuộc API thật. Nếu test offline thất bại, cần sửa node, route, schema

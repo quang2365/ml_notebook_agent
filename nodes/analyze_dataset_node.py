@@ -4,11 +4,15 @@ from model.model import llm
 def analyze_dataset_note(state:State) -> dict:
     # bản phân tích đầy đủ dataset
     dataset_summary = state.get("summary")
-    # bản phân tích tóm tắt
-    analys_context = dataset_summary.get('analysis_context')
     if not dataset_summary:
         return {"error":" Tôi không nhận được bản tóm tắt của Dataset",
-                "messages": AIMessage(content = "Tôi không nhận được bản tóm tắt của Dataset")}
+                "messages": [AIMessage(content = "Tôi không nhận được bản tóm tắt của Dataset")]}
+
+    #AI: Chỉ đọc context sau khi chắc chắn summary tồn tại.
+    analysis_context = (
+        dataset_summary.get("analysis_context")
+        or dataset_summary
+    )
     system_prompt = """
     Bạn là một chuyên gia tóm tắt và phân tích dữ liêu.
     bạn sẽ được cung cấp các dữ liệu liên quan đến dataset hãy tóm tắt nội dung ấy cho người dùng
@@ -37,17 +41,17 @@ def analyze_dataset_note(state:State) -> dict:
         - Trình bày bằng Markdown tiếng Việt
     """
     message=f"""Bạn là một Data Scientist. Đây là thông tin dataset:
-                    {analys_context}"""
+                    {analysis_context}"""
 
     try:
         result = llm.invoke([SystemMessage(content= system_prompt),HumanMessage(message)])
         return {
             "messages": [result],
-            "summary_llm": result.content
+            "summary_llm": result.content,
+            "error": None,
         }
     except Exception as exc:
         return {
             "error": str(exc),
             "messages": [AIMessage(content=f"Có lỗi gì đó khi tôi đang cố đọc dataset: {str(exc)}")]
         }
-    

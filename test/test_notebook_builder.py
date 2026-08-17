@@ -20,6 +20,20 @@ class JsonCellConversionTests(unittest.TestCase):
         self.assertEqual(result["execution_count"], None)
         self.assertEqual(result["outputs"], [])
         self.assertIsInstance(result["source"], list)
+        self.assertEqual(result["id"], "section_1_code_1")
+        self.assertEqual(
+            result["metadata"]["agent"]["cell_id"],
+            "section_1_code_1",
+        )
+
+    def test_normalizes_notebook_cell_id(self) -> None:
+        agent_cell = make_agent_cell(
+            cell_id="section 1/code 1"
+        )
+
+        result = json_object_to_cell(agent_cell)
+
+        self.assertEqual(result["id"], "section-1-code-1")
 
     def test_json_string_with_cells_wrapper(self) -> None:
         payload = json.dumps(
@@ -47,6 +61,7 @@ class NotebookBuilderTests(unittest.TestCase):
 
             self.assertEqual(result["build_status"], "success")
             self.assertIsNone(result["build_error"])
+            self.assertNotIn("notebook_cells", result)
             self.assertTrue(output_path.exists())
 
             notebook = json.loads(
@@ -55,6 +70,10 @@ class NotebookBuilderTests(unittest.TestCase):
             self.assertEqual(notebook["nbformat"], 4)
             self.assertEqual(len(notebook["cells"]), 1)
             self.assertEqual(notebook["cells"][0]["cell_type"], "code")
+            self.assertEqual(
+                notebook["cells"][0]["id"],
+                "section_1_code_1",
+            )
 
 
 if __name__ == "__main__":

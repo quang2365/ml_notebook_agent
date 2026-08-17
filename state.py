@@ -111,7 +111,20 @@ class State(TypedDict):
     fix_cell_failures: list[dict] | None
 
     # ==================================================
-    # 7. NOTEBOOK BUILD
+    # 7. PIPELINE REVIEW
+    # ==================================================
+
+    # Trạng thái đánh giá ngữ nghĩa toàn bộ pipeline bằng LLM.
+    pipeline_review_status: (
+        Literal["pending", "valid", "invalid", "failed"]
+        | None
+    )
+
+    # Danh sách lỗi ngữ nghĩa được pipeline reviewer phát hiện.
+    pipeline_review_errors: list[dict] | None
+
+    # ==================================================
+    # 8. NOTEBOOK BUILD
     # ==================================================
 
     # Đường dẫn file notebook đầu ra.
@@ -125,9 +138,25 @@ class State(TypedDict):
 
     # Lỗi riêng xảy ra trong quá trình tạo file notebook.
     build_error: str | None
+    # ==================================================
+    # 9. NOTEBOOK EXECUTION
+    # ==================================================
+
+    # Trạng thái thực thi notebook.
+    execution_status: (
+        Literal[
+            "pending",
+            "success",
+            "failed",
+        ]
+        | None
+    )
+
+    # Thông tin lỗi khi notebook thực thi thất bại.
+    execution_error: dict | None
 
     # ==================================================
-    # 8. GLOBAL ERROR
+    # 10. GLOBAL ERROR
     # ==================================================
 
     # Lỗi tổng quát gần nhất của workflow.

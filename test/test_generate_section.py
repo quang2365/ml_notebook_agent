@@ -151,6 +151,23 @@ class GenerateSectionTests(unittest.TestCase):
             result["section_generation_status"],
             "success",
         )
+
+        previous_code_cells = (
+            mock_generate.call_args.kwargs[
+                "previous_code_cells"
+            ]
+        )
+        self.assertEqual(
+            previous_code_cells,
+            [
+                {
+                    "cell_id": "section_1_1",
+                    "section_id": "section_1",
+                    "title": "Old cell",
+                    "source": "value = 1",
+                }
+            ],
+        )
     @patch(
         "nodes.generate_section_node."
         "generate_one_section"
@@ -211,6 +228,59 @@ class GenerateSectionTests(unittest.TestCase):
             result["section_retry_attempts"],
             1,
         )
+
+    @patch(
+        "nodes.generate_section_node."
+        "generate_one_section"
+    )
+    def test_previous_context_excludes_markdown(
+        self,
+        mock_generate,
+    ) -> None:
+        state = {
+            **self.state,
+            "current_section_index": 1,
+            "notebook_cells": [
+                {
+                    "cell_id": "section_1_markdown",
+                    "section_id": "section_1",
+                    "cell_type": "markdown",
+                    "title": "Explanation",
+                    "source": "Long markdown that must not enter the prompt.",
+                },
+                {
+                    "cell_id": "section_1_code",
+                    "section_id": "section_1",
+                    "cell_type": "code",
+                    "title": "Setup",
+                    "source": "dataset_path = './data/housing.csv'",
+                },
+            ],
+            "generated_section_ids": ["section_1"],
+        }
+        mock_generate.return_value = {
+            "status": "success",
+            "section_id": "section_2",
+            "cells": [
+                {
+                    "cell_id": "section_2_code",
+                    "section_id": "section_2",
+                    "cell_type": "code",
+                    "title": "Load",
+                    "source": "value = 1",
+                    "purpose": "Test",
+                }
+            ],
+            "error": None,
+        }
+
+        generate_section_node(state)
+
+        context = mock_generate.call_args.kwargs[
+            "previous_code_cells"
+        ]
+        self.assertEqual(len(context), 1)
+        self.assertEqual(context[0]["cell_id"], "section_1_code")
 class SectionGenerationRouteTests(
     unittest.TestCase
 ):
