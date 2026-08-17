@@ -8,15 +8,15 @@ from tools.json_to_cell_tool import json_object_to_cell
 
 def notebook_builder(state: State) -> dict:
     notebook_cell = state.get("notebook_cells")
-    notebook_path = state.get("notebook_path") or "output/test.ipynb"  #AI
+    notebook_path = state.get("notebook_path") or "output/test.ipynb"
     if not notebook_cell:
         error = "rỗng, chưa có cell notebook"
         return {
 
             "messages": [AIMessage(content=error)],
             "error": error,
-            "build_error": error,  #AI
-            "build_status": "failed",  #AI
+            "build_error": error,
+            "build_status": "failed",
         }
     cells = [
         json_object_to_cell(item)
@@ -24,12 +24,12 @@ def notebook_builder(state: State) -> dict:
     ]
     write_cells_to_ipynb(cells,notebook_path)
     return {
-        #AI: Không ghi đè cell nội bộ bằng cell định dạng nbformat.
+
         "notebook_path": notebook_path,
-        "build_status": "success",  #AI
-        "build_error": None,  #AI
-        "error": None,  #AI
-        "messages": [  #AI
+        "build_status": "success",
+        "build_error": None,
+        "error": None,
+        "messages": [
             AIMessage(
                 content=f"Đã tạo notebook tại `{notebook_path}`."
             )

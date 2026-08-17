@@ -48,7 +48,7 @@ def execute_notebook_node(
 
         client = NotebookClient(notebook, timeout=300,kernel_name="python3")
 
-        #AI: Dataset path trong State được tính từ thư mục gốc ứng dụng,
+
         # không phải từ thư mục output chứa notebook.
         execution_cwd = Path.cwd().resolve()
         client.execute(cwd=str(execution_cwd))
@@ -75,7 +75,7 @@ def execute_notebook_node(
 
     except CellExecutionError as exc:
         message = str(exc)
-        #AI: nbclient đã ghi output lỗi vào notebook trước khi raise.
+
         failed_cells = extract_failed_cell(notebook) or {}
         failed_cell_id = failed_cells.get("cell_id")
         exception_name = failed_cells.get("exception_name")
@@ -122,7 +122,7 @@ def extract_failed_cell(
     CellExecutionError.
     """
 
-    #AI: Duyệt ngược để lấy cell lỗi gần nhất.
+
     for cell in reversed(notebook.cells):
         if cell.get("cell_type") != "code":
             continue

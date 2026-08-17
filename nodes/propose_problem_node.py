@@ -9,7 +9,7 @@ def propose_problem_node(state: State) -> dict:
         or []
     )
     if not target_candidates:
-        #AI: Không tiếp tục bằng các biến chưa được khởi tạo.
+
         error_message = (
             "Không tìm thấy target candidate trong dataset."
         )

@@ -10,20 +10,20 @@ import json
 from validators.dependency_validator import (
     BUILTIN_NAMES,
     CellDependencyAnalyzer,
-    validate_dependencies,  #AI
+    validate_dependencies,
 )
 from model.model import llm
 from schemas.fixed_cell_schema import FixedCell
 from state import State
 
 
-#AI: Graph quản lý các vòng retry; mỗi lần vào node chỉ gọi LLM một lần.
+
 MAX_CELL_FIX_RETRIES = 1
 
 
 fix_llm = llm.with_structured_output(
     FixedCell,
-    method="function_calling",  #AI: tương thích NVIDIA và DeepSeek
+    method="function_calling",
 )
 
 
@@ -243,7 +243,7 @@ def fix_cells_node(
             None,
         )
 
-        #AI: Phải kiểm tra trước khi dùng cell_index để slice danh sách.
+
         if cell_index is None:
             failed_cell_ids.append(cell_id)
             continue
@@ -289,7 +289,7 @@ def fix_cells_node(
                 mode="exec",
             )
 
-            #AI: Compile thành công chưa chứng minh undefined_variable đã hết.
+
             # Thay source trên một bản sao và validate dependency toàn notebook.
             candidate_cells = deepcopy(updated_cells)
             candidate_cells[cell_index]["source"] = fixed_source
@@ -306,7 +306,7 @@ def fix_cells_node(
                     f"{remaining_cell_errors}"
                 )
 
-            #AI: Chỉ ghi nhận bản sửa sau khi syntax và dependency cùng hợp lệ.
+
             cell["source"] = fixed_source
 
             fixed_cell_ids.append(
@@ -341,7 +341,7 @@ def fix_cells_node(
         "notebook_cells": updated_cells,
 
         # Validator tiếp theo sẽ xác định lại
-        "validation_cell_status": "pending",  #AI: đặt lại để validator kiểm tra
+        "validation_cell_status": "pending",
         "validation_cell_errors": None,
 
         "fix_cell_attempts": new_fix_attempts,

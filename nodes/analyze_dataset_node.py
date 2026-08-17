@@ -8,7 +8,7 @@ def analyze_dataset_note(state:State) -> dict:
         return {"error":" Tôi không nhận được bản tóm tắt của Dataset",
                 "messages": [AIMessage(content = "Tôi không nhận được bản tóm tắt của Dataset")]}
 
-    #AI: Chỉ đọc context sau khi chắc chắn summary tồn tại.
+
     analysis_context = (
         dataset_summary.get("analysis_context")
         or dataset_summary

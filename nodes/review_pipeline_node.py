@@ -123,7 +123,7 @@ def review_pipeline_node(state: State) -> dict:
 
     cells = state.get("notebook_cells") or []
 
-    #AI: Chỉ gửi code cell để giảm token và tránh markdown
+
     # không liên quan làm nhiễu quá trình đánh giá.
     code_cells = [
         {
@@ -215,14 +215,14 @@ def review_pipeline_node(state: State) -> dict:
         status = result_dict["status"]
         errors = result_dict.get("errors") or []
 
-        #AI: Không tin hoàn toàn vào status do LLM trả về.
+
         # Chuẩn hóa status dựa trên danh sách lỗi thực tế.
         if errors:
             status = "invalid"
         else:
             status = "valid"
 
-        #AI: Loại bỏ lỗi trỏ tới cell_id không tồn tại.
+
         valid_cell_ids = {
             cell["cell_id"]
             for cell in code_cells
@@ -262,13 +262,13 @@ def review_pipeline_node(state: State) -> dict:
                         )
                         if related_id in valid_cell_ids
                     ],
-                    #AI: Cho fix_cells_node biết đây là lỗi
+
                     # semantic do pipeline reviewer phát hiện.
                     "source": "pipeline_review",
                 }
             )
 
-        #AI: Không được biến lỗi thật thành trạng thái valid chỉ vì
+
         # reviewer trả về cell_id không tồn tại.
         if invalid_cell_references:
             invalid_ids = ", ".join(
@@ -286,7 +286,7 @@ def review_pipeline_node(state: State) -> dict:
                 "messages": [AIMessage(content=message)],
             }
 
-        #AI: Sau khi chuẩn hóa lỗi, tính lại trạng thái.
+
         final_status = (
             "invalid"
             if normalized_errors
@@ -303,7 +303,7 @@ def review_pipeline_node(state: State) -> dict:
             "pipeline_review_errors": (
                 normalized_errors
             ),
-            #AI: Chuyển lỗi pipeline sang cùng nơi mà
+
             # fix_cells_node đang đọc.
             "validation_cell_errors": (
                 normalized_errors

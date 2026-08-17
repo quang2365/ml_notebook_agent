@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import json
-import re  #AI
+import re
 from typing import Any
 
 
 ALLOWED_CELL_TYPES = {"code", "markdown"}
-MAX_NOTEBOOK_CELL_ID_LENGTH = 64  #AI
+MAX_NOTEBOOK_CELL_ID_LENGTH = 64
 
 
 def _source_lines(source: str) -> list[str]:
@@ -56,9 +56,9 @@ def json_object_to_cell(cell_data: dict[str, Any]) -> dict[str, Any]:
         raise TypeError("Cell source must be a string.")
 
     cell = {
-        "id": _notebook_cell_id(cell_data),  #AI
+        "id": _notebook_cell_id(cell_data),
         "cell_type": cell_type,
-        #AI: Giữ metadata agent để execution error truy ngược về section.
+
         "metadata": {
             "agent": {
                 "cell_id": cell_data.get("cell_id"),

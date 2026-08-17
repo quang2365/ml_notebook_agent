@@ -1,6 +1,6 @@
 import json
-import os  #AI
-from uuid import uuid4  #AI
+import os
+from uuid import uuid4
 
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
@@ -67,14 +67,14 @@ def print_last_message(
 
 def main() -> None:
     # Phải chọn model trước khi import graph vì các node
-    # khởi tạo structured LLM ngay tại thời điểm import.  #AI
-    use_deepseek = ask_use_deepseek()  #AI
-    os.environ["USE_DEEPSEEK"] = (  #AI
+    # khởi tạo structured LLM ngay tại thời điểm import.
+    use_deepseek = ask_use_deepseek()
+    os.environ["USE_DEEPSEEK"] = (
         "true" if use_deepseek else "false"
     )
 
-    from graph import build_graph  #AI
-    from model.model import selected_model_name  #AI
+    from graph import build_graph
+    from model.model import selected_model_name
 
     console.print(
         "Model đang sử dụng:",
@@ -88,9 +88,9 @@ def main() -> None:
 
     config = {
         "configurable": {
-            "thread_id": f"run-{uuid4()}"  #AI
+            "thread_id": f"run-{uuid4()}"
         },
-        "recursion_limit": 50,  #AI
+        "recursion_limit": 50,
     }
 
     # =========================================
@@ -122,28 +122,28 @@ def main() -> None:
         "target_analysis": None,
 
         "notebook_plan": None,
-        "plan_validation_status": None,  #AI
-        "plan_validation_errors": None,  #AI
-        "fix_plan_attempts": 0,  #AI
+        "plan_validation_status": None,
+        "plan_validation_errors": None,
+        "fix_plan_attempts": 0,
         "notebook_cells": None,
         "section_generation_status": None,
-        "section_generation_errors": [],  #AI
-        "current_section_index": 0,  #AI
-        "generated_section_ids": [],  #AI
-        "section_retry_attempts": 0,  #AI
+        "section_generation_errors": [],
+        "current_section_index": 0,
+        "generated_section_ids": [],
+        "section_retry_attempts": 0,
 
-        "notebook_path": "output/test.ipynb",  #AI
-        "build_status": "pending",  #AI
-        "build_error": None,  #AI
+        "notebook_path": "output/test.ipynb",
+        "build_status": "pending",
+        "build_error": None,
 
-        "execution_status": "pending",  #AI
-        "execution_error": None,  #AI
+        "execution_status": "pending",
+        "execution_error": None,
 
         "validation_cell_status": None,
         "validation_cell_errors": None,
 
-        "pipeline_review_status": "pending",  #AI
-        "pipeline_review_errors": [],  #AI
+        "pipeline_review_status": "pending",
+        "pipeline_review_errors": [],
 
         "fix_cell_attempts": 0,
         "fixed_cell_ids": None,
@@ -334,16 +334,16 @@ def main() -> None:
         len(markdown_cells),
     )
 
-    console.rule("[bold cyan]NOTEBOOK BUILDER")  #AI
+    console.rule("[bold cyan]NOTEBOOK BUILDER")
 
     console.print(
         "Build status:",
-        final_result.get("build_status"),  #AI
+        final_result.get("build_status"),
     )
 
     console.print(
         "Notebook path:",
-        final_result.get("notebook_path"),  #AI
+        final_result.get("notebook_path"),
     )
 
     # =========================================

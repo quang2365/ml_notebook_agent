@@ -11,7 +11,7 @@ from state import State
 
 structured_llm = llm.with_structured_output(
     NotebookPlan,
-    method="function_calling",  #AI: tương thích NVIDIA và DeepSeek
+    method="function_calling",
 )
 
 

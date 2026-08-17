@@ -171,7 +171,7 @@ def generate_section_node(
         state
     )
 
-    #AI: Chỉ gửi code đã sinh ở các section trước cho LLM.
+
     # Markdown, output và message không tham gia context để tiết kiệm token.
     previous_code_cells = [
         {

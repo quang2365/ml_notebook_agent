@@ -18,7 +18,7 @@ from validators.dependency_validator import (
 )
 
 
-#AI: Mỗi lần graph vào node chỉ gọi LLM một lần.
+
 # Số vòng tổng thể sẽ được kiểm soát bởi route.
 runtime_fix_llm = llm.with_structured_output(
     FixedCell,
@@ -332,7 +332,7 @@ def fix_execution_cell_node(
             result_dict.get("source") or ""
         )
 
-        #AI: Kiểm tra syntax trước khi đưa cell trở lại workflow.
+
         compile(
             fixed_source,
             filename=cell_id,
@@ -344,7 +344,7 @@ def fix_execution_cell_node(
             fixed_source
         )
 
-        #AI: Bản sửa runtime không được tạo thêm lỗi dependency.
+
         dependency_errors = validate_dependencies(
             updated_cells
         )
@@ -364,17 +364,17 @@ def fix_execution_cell_node(
         return {
             "notebook_cells": updated_cells,
 
-            #AI: Các validator phải kiểm tra lại bản sửa.
+
             "validation_cell_status": "pending",
             "validation_cell_errors": None,
             "pipeline_review_status": "pending",
             "pipeline_review_errors": None,
 
-            #AI: Notebook cũ chưa chứa source vừa sửa.
+
             "build_status": "pending",
             "build_error": None,
 
-            #AI: Chưa được coi là execution thành công cho đến
+
             # khi notebook được build và chạy lại.
             "execution_status": "pending",
             "execution_error": None,

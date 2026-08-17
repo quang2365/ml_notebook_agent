@@ -13,7 +13,7 @@ from state import State
 
 fix_plan_llm = llm.with_structured_output(
     NotebookPlan,
-    method="function_calling",  #AI: tránh response_format=json_schema
+    method="function_calling",
 )
 
 

@@ -12,7 +12,7 @@ from state import State
 
 section_llm = llm.with_structured_output(
     GeneratedSection,
-    method="function_calling",  #AI: tránh response_format=json_schema
+    method="function_calling",
 )
 
 

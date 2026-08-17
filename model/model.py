@@ -54,7 +54,7 @@ def create_llm(
             model=DEEPSEEK_MODEL,
             base_url=DEEPSEEK_BASE_URL,
             api_key=api_key,
-            #AI: Structured output của LangChain ép tool_choice cụ thể.
+
             # DeepSeek V4 chỉ chấp nhận cách này khi tắt Thinking mode.
             extra_body={
                 "thinking": {
