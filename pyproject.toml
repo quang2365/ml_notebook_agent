@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "qiu"
+version = "0.1.0"
+description = "AI Machine Learning Notebook Agent"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # CLI, configuration, and credential storage
+    "typer>=0.12",
+    "questionary>=2.0",
+    "keyring>=25.0",
+    "rich>=13.0",
+    "python-dotenv>=1.0",
+
+    # LangChain and LangGraph
+    "langgraph>=0.4",
+    "langchain>=0.3",
+    "langchain-openai>=0.3",
+    "pydantic>=2.9",
+
+    # Data processing
+    "pandas>=2.2",
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "pyarrow>=17.0",
+    "openpyxl>=3.1",
+
+    # Visualization
+    "matplotlib>=3.9",
+    "seaborn>=0.13",
+    "plotly>=5.24",
+
+    # Machine learning
+    "scikit-learn>=1.5",
+    "xgboost>=2.1",
+    "lightgbm>=4.5",
+    "catboost>=1.2",
+    "imbalanced-learn>=0.12",
+    "statsmodels>=0.14",
+    "joblib>=1.4",
+
+    # Notebook execution
+    "jupyter>=1.1",
+    "ipykernel>=6.29",
+    "nbformat>=5.10",
+    "nbclient>=0.10",
+    # Terminal UI
+    "textual",
+    
+    # Utilities
+    "tqdm>=4.66",
+    "typing-extensions>=4.12",
+]
+
+
+[project.optional-dependencies]
+dev = [
+    "build>=1.2",
+    "mypy>=1.13",
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+
+
+[project.scripts]
+qiu = "cli.app:app"
+
+
+[tool.setuptools]
+include-package-data = true
+py-modules = ["graph", "state"]
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "cli*",
+    "config*",
+    "model*",
+    "nodes*",
+    "route*",
+    "schemas*",
+    "security*",
+    "tools*",
+    "validators*",
+    "TUI*"
+]
+exclude = [
+    "data*",
+    "output*",
+    "test*",
+]
+
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+python_files = ["test_*.py"]

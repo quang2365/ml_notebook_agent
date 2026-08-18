@@ -26,14 +26,13 @@ def select_provider() -> str:
     if selected is None:
         raise typer.Exit(1)
     if selected == "__other__":
-        choose_other_provider = True
         return selected_other_provider()
 
     return selected
 
 def select_model(provider_id: str) -> str:
     if provider_id not in PROVIDERS:
-        return select_orther_model()
+        return select_other_model()
     provider = PROVIDERS[provider_id]
     model = provider['models']
 
@@ -49,8 +48,8 @@ def select_model(provider_id: str) -> str:
         use_arrow_keys=True,
         use_indicator=True,
     ).ask()
-    if select_model == "__other__":
-        return select_orther_model()
+    if selected_model == "__other__":
+        return select_other_model()
     if selected_model is None:
         raise typer.Exit(1)
 
@@ -62,25 +61,24 @@ def run_setup() -> None:
         base_url = enter_base_url()
     else:
         provider_name = f"{PROVIDERS[provider]['label']}"
+        base_url = PROVIDERS[provider]["base_url"]
     api_key = questionary.password(
         f"Enter API Key for {provider_name}:",
         validate=lambda text: True
         if text.strip()
         else "API key cannot be empty.",
     ).ask()
-
-    model = select_model(provider)
-
     if api_key is None:
         typer.echo("\nSetup cancelled.")
         raise typer.Exit(code=1)
+    model = select_model(provider)
 
     typer.echo("\n--- Configuration Summary ---")
     typer.echo(f"Provider : {provider_name}")
     typer.echo(f"Model    : {model}")
 
     confirmed = questionary.confirm(
-        "Bitch, Do you wanna save this shit?",
+        "Save this configuration?",
         default=True,
     ).ask()
 
@@ -88,7 +86,6 @@ def run_setup() -> None:
         typer.echo("Setup cancelled.")
         raise typer.Exit()
 
-    # 6. Lưu dữ liệu
     save_api_key(
         provider=provider,
         api_key=api_key.strip(),
@@ -105,11 +102,10 @@ def selected_other_provider() -> str:
         if text.strip()
         else "Provider name cannot be empty.",
     ).ask()
-    other_provider = other_provider.strip()
     if other_provider is None:
         raise typer.Exit(1)
-    return other_provider
-def select_orther_model() -> str:
+    return other_provider.strip()
+def select_other_model() -> str:
     model = questionary.text(
         "Enter model name:",
         validate=lambda text: True
@@ -117,11 +113,9 @@ def select_orther_model() -> str:
         else "Must enter the model name"
     ).ask()
 
-    model = model.strip()
-
     if not model:
         raise typer.Exit(1)
-    return model
+    return model.strip()
 def enter_base_url() -> str:
     base_url = questionary.text(
         "Enter base url of provider:",
@@ -129,9 +123,6 @@ def enter_base_url() -> str:
         if text.strip()
         else "Must enter base url of provider"
     ).ask()
-
-    base_url = base_url.strip()
-
     if not base_url:
         raise typer.Exit(1)
-    return base_url
+    return base_url.strip()

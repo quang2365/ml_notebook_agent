@@ -1,7 +1,6 @@
 import unittest
 from unittest.mock import patch
 
-from main import ask_use_deepseek
 from model.model import (
     DEEPSEEK_BASE_URL,
     DEEPSEEK_MODEL,
@@ -52,15 +51,6 @@ class ModelSelectionTests(unittest.TestCase):
             base_url=NVIDIA_BASE_URL,
             api_key="test-key",
         )
-
-    @patch("builtins.input", return_value="yes")
-    def test_prompt_accepts_deepseek(self, _mock_input) -> None:
-        self.assertTrue(ask_use_deepseek())
-
-    @patch("builtins.input", return_value="")
-    def test_prompt_defaults_to_current_model(self, _mock_input) -> None:
-        self.assertFalse(ask_use_deepseek())
-
 
 if __name__ == "__main__":
     unittest.main()
