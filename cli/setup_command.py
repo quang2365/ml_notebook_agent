@@ -5,7 +5,6 @@ from config.managers import save_config
 from config.providers import PROVIDERS
 from security.api_key_store import save_api_key
 
-
 def select_provider() -> str:
     typer.echo("\nQIU SETUP")
 
@@ -54,6 +53,7 @@ def select_model(provider_id: str) -> str:
         raise typer.Exit(1)
 
     return selected_model
+
 def run_setup() -> None:
     provider = select_provider()
     if provider not in PROVIDERS:
@@ -93,7 +93,7 @@ def run_setup() -> None:
 
     save_config(provider,base_url,model)
 
-    typer.echo("\n✔ QIU setup completed successfully!")
+    typer.echo("\nQIU setup completed successfully!")
 
 def selected_other_provider() -> str:
     other_provider = questionary.text(

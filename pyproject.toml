@@ -8,7 +8,7 @@ name = "qiu"
 version = "0.1.0"
 description = "AI Machine Learning Notebook Agent"
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11"
 dependencies = [
     # CLI, configuration, and credential storage
     "typer>=0.12",
@@ -22,7 +22,6 @@ dependencies = [
     "langchain>=0.3",
     "langchain-openai>=0.3",
     "pydantic>=2.9",
-
     # Data processing
     "pandas>=2.2",
     "numpy>=2.0",

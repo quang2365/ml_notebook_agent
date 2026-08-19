@@ -4,14 +4,17 @@ from pathlib import Path
 CONFIG_DIR = Path.home()/".qiu"
 
 CONFIG_FILE = CONFIG_DIR/"config.json"
+
+
 def remove_config() -> bool:
     try:
         if CONFIG_FILE.exists():
-            CONFIG_FILE.unlink()
+            CONFIG_FILE.unlink(),
             return True
         return False
     except OSError:
         return False
+
 def save_config(provider:str,base_url:str | None,model:str):
     CONFIG_DIR.mkdir(parents=True,exist_ok=True)
     data = {"provider": provider,"base_url":base_url,"model": model}

@@ -1,56 +1,39 @@
 import unittest
 from unittest.mock import patch
 
-from model.model import (
-    DEEPSEEK_BASE_URL,
-    DEEPSEEK_MODEL,
-    NVIDIA_BASE_URL,
-    NVIDIA_MODEL,
-    create_llm,
-)
+from model.model import create_llm
 
 
 class ModelSelectionTests(unittest.TestCase):
     @patch("model.model.ChatOpenAI")
-    def test_create_deepseek_model_when_selected(
+    @patch("model.model.get_api_key", return_value="test-key")
+    @patch(
+        "model.model.load_config",
+        return_value={
+            "provider": "custom",
+            "model": "test-model",
+            "base_url": "https://example.com/v1",
+        },
+    )
+    def test_create_llm_from_saved_config(
         self,
+        _mock_config,
+        _mock_key,
         mock_chat_openai,
     ) -> None:
-        with patch.dict(
-            "os.environ",
-            {"DEEPSEEK_API_KEY": "test-key"},
-            clear=False,
-        ):
-            create_llm(use_deepseek=True)
+        create_llm()
 
         mock_chat_openai.assert_called_once_with(
-            model=DEEPSEEK_MODEL,
-            base_url=DEEPSEEK_BASE_URL,
+            model="test-model",
             api_key="test-key",
-            extra_body={
-                "thinking": {
-                    "type": "disabled",
-                }
-            },
+            base_url="https://example.com/v1",
         )
 
-    @patch("model.model.ChatOpenAI")
-    def test_keep_nvidia_model_when_deepseek_not_selected(
-        self,
-        mock_chat_openai,
-    ) -> None:
-        with patch.dict(
-            "os.environ",
-            {"NVIDIA_API_KEY": "test-key"},
-            clear=False,
-        ):
-            create_llm(use_deepseek=False)
+    @patch("model.model.load_config", return_value=None)
+    def test_create_llm_requires_config(self, _mock_config) -> None:
+        with self.assertRaisesRegex(RuntimeError, "qiu setup"):
+            create_llm()
 
-        mock_chat_openai.assert_called_once_with(
-            model=NVIDIA_MODEL,
-            base_url=NVIDIA_BASE_URL,
-            api_key="test-key",
-        )
 
 if __name__ == "__main__":
     unittest.main()
