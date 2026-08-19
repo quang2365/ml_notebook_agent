@@ -165,3 +165,62 @@ class State(TypedDict):
 
     # Lỗi tổng quát gần nhất của workflow.
     error: str | None
+
+
+def create_initial_state( dataset_path: str, ) -> State:
+    return {
+        # 1. Messages
+        "messages": [],
+
+        # 2. Dataset
+        "dataset_path": dataset_path,
+        "summary": None,
+        "summary_llm": None,
+
+        # 3. Problem proposal + HITL
+        "problem_proposal": None,
+        "target_column": None,
+        "problem_type": None,
+        "approval_status": None,
+        "user_feedback": None,
+        "target_analysis": None,
+
+        # 4. Notebook plan
+        "notebook_plan": None,
+        "plan_validation_status": None,
+        "plan_validation_errors": None,
+        "fix_plan_attempts": 0,
+
+        # 5. Section generation
+        "notebook_cells": None,
+        "section_generation_status": None,
+        "section_generation_errors": None,
+        "current_section_index": 0,
+        "generated_section_ids": [],
+        "section_retry_attempts": 0,
+
+        # 6. Cell validation
+        "validation_cell_status": None,
+        "validation_cell_errors": None,
+        "fix_cell_attempts": 0,
+        "fixed_cell_ids": None,
+        "fix_cell_failures": None,
+
+        # 7. Pipeline review
+        "pipeline_review_status": None,
+        "pipeline_review_errors": None,
+
+        # 8. Notebook build
+        "notebook_path": None,
+        "build_status": None,
+        "build_error": None,
+
+        # 9. Execution
+        "execution_status": None,
+        "execution_error": None,
+        "execution_attempts": 0,
+        "execution_fix_attempts": 0,
+
+        # 10. Global error
+        "error": None,
+    }
