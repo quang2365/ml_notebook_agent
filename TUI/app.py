@@ -1,13 +1,26 @@
+from textual import work
 from textual.app import App, ComposeResult
-from textual.containers import  Vertical
-from textual.widgets import Button, Footer, Header, Label, Static
-from config.providers import  PROVIDERS
+from textual.containers import Vertical
+from textual.widgets import (
+    Button,
+    Footer,
+    Header,
+    Label,
+    Static,
+    LoadingIndicator,
+)
+
+from config.providers import PROVIDERS
 from TUI.datasetpicker import DatasetPickerScreen
+from TUI.review_problem import ReviewProblemScreen
+from graph import build_graph
+from state import create_initial_state
+
+import uuid
 
 
-class QiuApp(
-    App[None]
-):
+class QiuApp(App[None]):
+
     TITLE = "QIU"
 
     SUB_TITLE = (
@@ -49,7 +62,17 @@ class QiuApp(
         padding: 1;
         margin-bottom: 1;
     }
+    #loading-indicator {
+        display: none;
+        height: 1;
+        margin-top: 1;
+    }
 
+    #processing-status {
+        display: none;
+        text-align: center;
+        margin: 1 0;
+    }
     #select-dataset {
         width: 100%;
         margin-bottom: 1;
@@ -60,22 +83,43 @@ class QiuApp(
     }
     """
 
-    def __init__(self, config: dict):
+    def __init__(
+        self,
+        config: dict,
+    ):
         super().__init__()
 
         self.config = config
 
-        self.dataset_path: (str | None) = None
+        self.dataset_path: (
+            str | None
+        ) = None
 
-    def compose( self, ) -> ComposeResult:
-        provider_id = ( self.config[ "provider"] )
-        model = self.config[
-            "model"
-        ]
-        if ( provider_id in PROVIDERS ):
+        self.thread_id = str(
+            uuid.uuid4()
+        )
+
+        self.graph_config = {
+            "configurable": {
+                "thread_id":
+                    self.thread_id
+            }
+        }
+
+        self.graph = build_graph()
+    def compose(self) -> ComposeResult:
+
+        provider_id = ( self.config["provider"] )
+
+        model = ( self.config["model"] )
+
+        if provider_id in PROVIDERS:
             provider_name = ( PROVIDERS[ provider_id ]["label"] )
+
         else:
-            provider_name = ( provider_id )
+            provider_name = (
+                provider_id
+            )
 
         yield Header()
 
@@ -109,7 +153,14 @@ class QiuApp(
                 id="select-dataset",
                 variant="primary",
             ),
+            LoadingIndicator(
+                id="loading-indicator",
+            ),
 
+            Static(
+                "",
+                id="processing-status",
+            ),
             Button(
                 "Start",
                 id="start-button",
@@ -122,20 +173,25 @@ class QiuApp(
 
         yield Footer()
     def on_button_pressed( self, event: Button.Pressed, ) -> None:
+
         button_id = ( event.button.id )
 
-        if ( button_id == "select-dataset" ):
+        if button_id == "select-dataset":
             self.open_dataset_picker()
 
-        elif ( button_id == "start-button" ):
+        elif button_id == "start-button":
             self.start_workflow()
-    def open_dataset_picker(self) -> None:
+        self.show_processing(
+                "Processing dataset...\n"
+                "QIU is inspecting and "
+                "analyzing your data."
+            )
+    def open_dataset_picker( self, ) -> None:
         self.push_screen(
             DatasetPickerScreen(),
             self.handle_dataset_selected,
         )
     def handle_dataset_selected( self, dataset_path: str | None, ) -> None:
-
         if dataset_path is None:
             return
 
@@ -143,34 +199,170 @@ class QiuApp(
             dataset_path
         )
 
-        dataset_label = (
-            self.query_one(
-                "#dataset-path",
-                Static,
-            )
+        dataset_label = self.query_one(
+            "#dataset-path",
+            Static,
         )
 
         dataset_label.update(
             dataset_path
         )
 
-        start_button = (
-            self.query_one(
-                "#start-button",
-                Button,
-            )
+        start_button = self.query_one(
+            "#start-button",
+            Button,
         )
 
         start_button.disabled = False
+    def show_processing( self, message: str, ) -> None:
+
+        loading = self.query_one(
+            "#loading-indicator",
+            LoadingIndicator,
+        )
+
+        status = self.query_one(
+            "#processing-status",
+            Static,
+        )
+
+        start_button = self.query_one(
+            "#start-button",
+            Button,
+        )
+
+        select_button = self.query_one(
+            "#select-dataset",
+            Button,
+        )
+
+        loading.styles.display = "block"
+        status.styles.display = "block"
+
+        status.update(
+            message
+        )
+
+        start_button.disabled = True
+        select_button.disabled = True
+    def hide_processing( self, ) -> None:
+        loading = self.query_one(
+            "#loading-indicator",
+            LoadingIndicator,
+        )
+
+        status = self.query_one(
+            "#processing-status",
+            Static,
+        )
+
+        start_button = self.query_one(
+            "#start-button",
+            Button,
+        )
+
+        select_button = self.query_one(
+            "#select-dataset",
+            Button,
+        )
+
+        loading.styles.display = "none"
+        status.styles.display = "none"
+
+        status.update("")
+
+        start_button.disabled = False
+        select_button.disabled = False
+    def show_graph_error( self, message: str, ) -> None:
+        self.hide_processing()
+        self.notify(
+            message,
+            title="Graph Error",
+            severity="error",
+            timeout=10,
+        )
+    def handle_graph_result( self, result: dict, ) -> None:
+        self.hide_processing()
+        interrupt = result.get("__interrupt__")
+        if interrupt:
+            self.handle_interrupt(interrupt)
+            return
+
+        self.notify(
+        "Workflow completed.",
+        title="QIU",
+        severity="information",
+        )
+    def handle_interrupt( self, interrupts, ) -> None:
+        interrupt_item = interrupts[0]
+
+        payload = interrupt_item.value
+
+        self.push_screen(
+            ReviewProblemScreen(
+                payload=payload
+            ),
+            self.handle_review_decision,
+        )
+    def handle_review_decision( self, decision: dict | None, ) -> None:
+        if decision is None:
+            return
+
+        self.resume_workflow(
+            decision
+        )
+    @work( thread=True, exclusive=True, )
     def start_workflow( self, ) -> None:
 
         if not self.dataset_path:
             return
 
-        self.notify(
-            (
-                "Dataset selected:\n"
-                f"{self.dataset_path}"
-            ),
-            title="QIU",
+        initial_state = ( create_initial_state( self.dataset_path ) )
+
+        try:
+            result = self.graph.invoke(
+                initial_state,
+                config=self.graph_config,
+            )
+
+        except Exception as exc:
+
+            self.call_from_thread(
+                self.show_graph_error,
+                str(exc),
+            )
+
+            return
+
+        self.call_from_thread(
+            self.handle_graph_result,
+            result,
+        )
+    @work( thread=True, exclusive=True, )
+    def resume_workflow( self, decision: dict, ) -> None:
+
+        from langgraph.types import (
+            Command,
+        )
+
+        try:
+            result = self.graph.invoke(
+                Command(
+                    resume=decision
+                ),
+                config=self.graph_config,
+            )
+
+        except Exception as exc:
+
+            self.call_from_thread(
+                self.show_graph_error,
+                str(exc),
+            )
+
+            return
+
+        self.call_from_thread(
+            self.handle_graph_result,
+            result,
         )

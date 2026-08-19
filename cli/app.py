@@ -1,5 +1,4 @@
 import typer
-from TUI.app import QiuApp
 from cli.setup_command import run_setup
 from config.managers import is_config,load_config,remove_config
 from config.providers import PROVIDERS
@@ -83,5 +82,7 @@ def start_qiu() -> None:
     )
     typer.echo("\nConfiguration loaded.")
     typer.echo("Starting QIU...")
+    from TUI.app import QiuApp
+
     app_instance = QiuApp(config=config)
     app_instance.run()
