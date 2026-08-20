@@ -123,6 +123,9 @@ class State(TypedDict):
     # Semantic errors found by the pipeline reviewer.
     pipeline_review_errors: list[dict] | None
 
+    # Number of repair attempts for semantic pipeline errors.
+    pipeline_fix_attempts: int
+
     # ==================================================
     # 8. NOTEBOOK BUILD
     # ==================================================
@@ -209,6 +212,7 @@ def create_initial_state( dataset_path: str, ) -> State:
         # 7. Pipeline review
         "pipeline_review_status": None,
         "pipeline_review_errors": None,
+        "pipeline_fix_attempts": 0,
 
         # 8. Notebook build
         "notebook_path": None,

@@ -102,7 +102,8 @@ class RouteTests(unittest.TestCase):
             route_after_review_pipeline(
                 {
                     "pipeline_review_status": "invalid",
-                    "fix_cell_attempts": 2,
+                    "fix_cell_attempts": 3,
+                    "pipeline_fix_attempts": 2,
                 }
             ),
             "invalid",
@@ -112,9 +113,22 @@ class RouteTests(unittest.TestCase):
                 {
                     "pipeline_review_status": "invalid",
                     "fix_cell_attempts": 3,
+                    "pipeline_fix_attempts": 3,
                 }
             ),
             "failed",
+        )
+
+    def test_pipeline_route_ignores_previous_cell_repairs(self) -> None:
+        self.assertEqual(
+            route_after_review_pipeline(
+                {
+                    "pipeline_review_status": "invalid",
+                    "fix_cell_attempts": 3,
+                    "pipeline_fix_attempts": 0,
+                }
+            ),
+            "invalid",
         )
 
     def test_plan_route(self) -> None:

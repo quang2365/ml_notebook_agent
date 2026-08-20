@@ -13,6 +13,7 @@ from validators.dependency_validator import (
     validate_dependencies,
 )
 from model.model import llm
+from model.structured_output import build_structured_llm, invoke_structured
 from schemas.fixed_cell_schema import FixedCell
 from state import State
 
@@ -21,9 +22,8 @@ from state import State
 MAX_CELL_FIX_RETRIES = 1
 
 
-fix_llm = llm.with_structured_output(
+fix_llm = build_structured_llm(llm,
     FixedCell,
-    method="function_calling",
 )
 
 
@@ -180,6 +180,11 @@ def fix_cells_node(
         or []
     )
 
+    is_pipeline_repair = any(
+        error.get("source") == "pipeline_review"
+        for error in validation_cell_errors
+    )
+
     fix_cell_attempts = state.get(
         "fix_cell_attempts",
         0,
@@ -329,22 +334,34 @@ def fix_cells_node(
                 }
             )
 
-    new_fix_attempts = fix_cell_attempts + 1
+    if is_pipeline_repair:
+        pipeline_fix_attempts = state.get(
+            "pipeline_fix_attempts",
+            0,
+        ) + 1
+        repair_attempt = pipeline_fix_attempts
+    else:
+        fix_cell_attempts += 1
+        repair_attempt = fix_cell_attempts
 
     message = build_fix_message(
-        fix_attempt=new_fix_attempts,
+        fix_attempt=repair_attempt,
         fixed_cell_ids=fixed_cell_ids,
         failed_cell_ids=failed_cell_ids,
     )
 
-    return {
+    result = {
         "notebook_cells": updated_cells,
 
         # The next validator will re-validate
         "validation_cell_status": "pending",
         "validation_cell_errors": None,
 
-        "fix_cell_attempts": new_fix_attempts,
+        "fix_cell_attempts": fix_cell_attempts,
+        "pipeline_fix_attempts": state.get(
+            "pipeline_fix_attempts",
+            0,
+        ),
         "fixed_cell_ids": fixed_cell_ids,
         "fix_cell_failures": fix_cell_failures,
         "error": (
@@ -360,6 +377,19 @@ def fix_cells_node(
             AIMessage(content=message)
         ],
     }
+
+    if is_pipeline_repair:
+        result.update(
+            {
+                "pipeline_fix_attempts": pipeline_fix_attempts,
+                "pipeline_review_status": "pending",
+                "pipeline_review_errors": None,
+            }
+        )
+    else:
+        result["fix_cell_attempts"] = fix_cell_attempts
+
+    return result
 def group_errors_by_cell(
     errors: list[dict],
 ) -> dict[str, list[dict]]:
@@ -436,7 +466,7 @@ def fix_single_cell(
             8. Do not use Markdown code fence.
             """
 
-        result = fix_llm.invoke(
+        result = invoke_structured(fix_llm, llm, FixedCell,
             [
                 SystemMessage(
                     content=SYSTEM_PROMPT

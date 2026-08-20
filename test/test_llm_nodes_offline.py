@@ -357,6 +357,47 @@ class FixCellsOfflineTests(unittest.TestCase):
             result["fix_cell_failures"][0]["message"],
         )
 
+    def test_pipeline_repair_uses_separate_attempt_counter(self) -> None:
+        fixed = FixedCell(
+            cell_id="section_1_code_1",
+            source="value = 2",
+            changes="Updated the value according to the pipeline review.",
+        )
+        fake = FakeRunnable([fixed])
+        state = {
+            "target_column": "median_house_value",
+            "problem_type": "regression",
+            "notebook_cells": [
+                {
+                    "cell_id": "section_1_code_1",
+                    "section_id": "section_1",
+                    "cell_type": "code",
+                    "title": "Pipeline review target",
+                    "source": "value = 1",
+                    "purpose": "Test semantic pipeline repair.",
+                }
+            ],
+            "validation_cell_errors": [
+                {
+                    "cell_id": "section_1_code_1",
+                    "error_type": "pipeline_incompatibility",
+                    "message": "The pipeline review found an issue.",
+                    "suggestion": "Update the current cell.",
+                    "source": "pipeline_review",
+                }
+            ],
+            "fix_cell_attempts": 3,
+            "pipeline_fix_attempts": 0,
+        }
+
+        with patch("nodes.fix_cells_node.fix_llm", fake):
+            result = fix_cells_node(state)
+
+        self.assertEqual(result["fix_cell_attempts"], 3)
+        self.assertEqual(result["pipeline_fix_attempts"], 1)
+        self.assertEqual(result["pipeline_review_status"], "pending")
+        self.assertEqual(result["notebook_cells"][0]["source"], "value = 2")
+
 class DatasetContextTests(unittest.TestCase):
     def test_build_dataset_context(self) -> None:
         state = {
