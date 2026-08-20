@@ -15,6 +15,7 @@ from TUI.datasetpicker import DatasetPickerScreen
 from TUI.review_problem import ReviewProblemScreen
 from graph import build_graph
 from state import create_initial_state
+from langgraph.types import Command
 
 import uuid
 
@@ -105,7 +106,7 @@ class QiuApp(App[None]):
                     self.thread_id
             }
         }
-
+        self.workflow_running = False
         self.graph = build_graph()
     def compose(self) -> ComposeResult:
 
@@ -180,8 +181,12 @@ class QiuApp(App[None]):
             self.open_dataset_picker()
 
         elif button_id == "start-button":
-            self.start_workflow()
-        self.show_processing(
+            if self.workflow_running:
+                return
+
+            self.workflow_running = True
+
+            self.show_processing(
                 "Processing dataset...\n"
                 "QIU is inspecting and "
                 "analyzing your data."
@@ -245,7 +250,8 @@ class QiuApp(App[None]):
 
         start_button.disabled = True
         select_button.disabled = True
-    def hide_processing( self, ) -> None:
+    def hide_processing( self, enable_start: bool = True, ) -> None:
+
         loading = self.query_one(
             "#loading-indicator",
             LoadingIndicator,
@@ -271,9 +277,13 @@ class QiuApp(App[None]):
 
         status.update("")
 
-        start_button.disabled = False
+        start_button.disabled = (
+            not enable_start
+        )
+
         select_button.disabled = False
     def show_graph_error( self, message: str, ) -> None:
+        self.workflow_running = False
         self.hide_processing()
         self.notify(
             message,
@@ -282,20 +292,44 @@ class QiuApp(App[None]):
             timeout=10,
         )
     def handle_graph_result( self, result: dict, ) -> None:
+
+        interrupts = result.get( "__interrupt__" )
+        if interrupts:
+            self.hide_processing(
+                enable_start=False
+            )
+
+            self.handle_interrupt(
+                interrupts
+            )
+            return
+        self.workflow_running = False
+
         self.hide_processing()
-        interrupt = result.get("__interrupt__")
-        if interrupt:
-            self.handle_interrupt(interrupt)
+
+        approval_status = result.get(
+            "approval_status"
+        )
+
+        if approval_status == "rejected":
+            self.notify(
+                (
+                    "Machine Learning problem "
+                    "proposal was rejected."
+                ),
+                title="QIU",
+                severity="warning",
+            )
             return
 
         self.notify(
-        "Workflow completed.",
-        title="QIU",
-        severity="information",
+            "Workflow completed.",
+            title="QIU",
+            severity="information",
         )
     def handle_interrupt( self, interrupts, ) -> None:
         interrupt_item = interrupts[0]
-
+        self.workflow_running = False
         payload = interrupt_item.value
 
         self.push_screen(
@@ -307,7 +341,9 @@ class QiuApp(App[None]):
     def handle_review_decision( self, decision: dict | None, ) -> None:
         if decision is None:
             return
-
+        self.show_processing(
+            "Applying your decision..."
+        )
         self.resume_workflow(
             decision
         )
@@ -340,11 +376,6 @@ class QiuApp(App[None]):
         )
     @work( thread=True, exclusive=True, )
     def resume_workflow( self, decision: dict, ) -> None:
-
-        from langgraph.types import (
-            Command,
-        )
-
         try:
             result = self.graph.invoke(
                 Command(
