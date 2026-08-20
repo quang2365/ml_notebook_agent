@@ -1,9 +1,38 @@
 import questionary
 from questionary import Choice
 import typer
-from config.managers import save_config
+from model.model import create_llm
+from config.managers import save_config,load_configured,append_configured
 from config.providers import PROVIDERS
 from security.api_key_store import save_api_key
+from dotenv import load_dotenv
+import os
+def message(content: str) -> None:
+    model = create_llm()
+    result = model.invoke([{"role":"user","content":content}])
+    typer.echo(result.content)
+def change_config() -> None:
+    typer.echo("\nProvider saved")
+    configured = load_configured()
+    choices = []
+    for config in configured:
+        provider = config['provider']
+        model = config['model']
+        base_url = config['base_url']
+        choices.append(Choice(title=f"provider:{provider};model:{model};base_url:{base_url}",value= config))
+    selected = questionary.select(
+            "Select Your Provider:",
+            choices=choices,
+            use_arrow_keys=True,
+            use_indicator=True
+        ).ask()
+    if selected is None:
+        raise typer.Exit(1)
+    save_config(
+        selected["provider"],
+        selected["base_url"],
+        selected["model"],
+    )
 
 def select_provider() -> str:
     typer.echo("\nQIU SETUP")
@@ -54,46 +83,7 @@ def select_model(provider_id: str) -> str:
 
     return selected_model
 
-def run_setup() -> None:
-    provider = select_provider()
-    if provider not in PROVIDERS:
-        provider_name = provider
-        base_url = enter_base_url()
-    else:
-        provider_name = f"{PROVIDERS[provider]['label']}"
-        base_url = PROVIDERS[provider]["base_url"]
-    api_key = questionary.password(
-        f"Enter API Key for {provider_name}:",
-        validate=lambda text: True
-        if text.strip()
-        else "API key cannot be empty.",
-    ).ask()
-    if api_key is None:
-        typer.echo("\nSetup cancelled.")
-        raise typer.Exit(code=1)
-    model = select_model(provider)
 
-    typer.echo("\n--- Configuration Summary ---")
-    typer.echo(f"Provider : {provider_name}")
-    typer.echo(f"Model    : {model}")
-
-    confirmed = questionary.confirm(
-        "Save this configuration?",
-        default=True,
-    ).ask()
-
-    if not confirmed:
-        typer.echo("Setup cancelled.")
-        raise typer.Exit()
-
-    save_api_key(
-        provider=provider,
-        api_key=api_key.strip(),
-    )
-
-    save_config(provider,base_url,model)
-
-    typer.echo("\nQIU setup completed successfully!")
 
 def selected_other_provider() -> str:
     other_provider = questionary.text(
@@ -126,3 +116,51 @@ def enter_base_url() -> str:
     if not base_url:
         raise typer.Exit(1)
     return base_url.strip()
+
+
+########################################################################
+def run_setup() -> None:
+    load_dotenv()
+    provider = select_provider()
+    if provider not in PROVIDERS:
+        provider_name = provider
+        base_url = enter_base_url()
+    else:
+        provider_name = f"{PROVIDERS[provider]['label']}"
+        base_url = PROVIDERS[provider]["base_url"]
+    provider_api_key = provider.upper() +"_API_KEY"
+    if not os.getenv(provider_api_key):
+        api_key = questionary.password(
+        f"Enter API Key for {provider_name}:",
+        validate=lambda text: True
+        if text.strip()
+        else "API key cannot be empty.",
+    ).ask()
+    else:
+        api_key = os.getenv(provider_api_key)
+
+    if api_key is None:
+        typer.echo("\nSetup cancelled.")
+        raise typer.Exit(code=1)
+    model = select_model(provider)
+
+    typer.echo("\n--- Configuration Summary ---")
+    typer.echo(f"Provider : {provider_name}")
+    typer.echo(f"Model    : {model}")
+
+    confirmed = questionary.confirm(
+        "Save this configuration?",
+        default=True,
+    ).ask()
+
+    if not confirmed:
+        typer.echo("Setup cancelled.")
+        raise typer.Exit()
+
+    save_api_key(
+        provider=provider,
+        api_key=api_key.strip(),
+    )
+    save_config(provider,base_url,model)
+    append_configured(provider,base_url,model)
+    typer.echo("\nQIU setup completed successfully!")

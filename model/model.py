@@ -5,6 +5,7 @@ from security.api_key_store import get_api_key
 from dotenv import load_dotenv
 
 load_dotenv()
+
 def create_llm() -> ChatOpenAI:
     config = load_config()
 

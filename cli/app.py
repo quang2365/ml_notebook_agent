@@ -1,6 +1,6 @@
 import typer
-from cli.setup_command import run_setup
-from config.managers import is_config,load_config,remove_config
+from cli.setup_command import run_setup,change_config as cc,message as msg
+from config.managers import is_config,load_config,remove_config,is_configured
 from config.providers import PROVIDERS
 from security.api_key_store import get_api_key
 
@@ -20,16 +20,33 @@ def main(ctx: typer.Context):
         return
     start_qiu()
 
+@app.command()
+def change_config():
+    if not is_configured():
+        typer.echo("don't have config yet")
+        raise typer.Exit(code=1)
+    cc()
+
+
+@app.command()
+def message(content: str = typer.Option(
+        ...,
+        "--message",
+        "-m",
+        help="The message text to process."),):
+    msg(content)
 
 @app.command()
 def setup():
     run_setup()
 
 
+
 @app.command()
 def version():
 
     typer.echo("QIU v0.1.0")
+
 
 @app.command()
 def rm_config():
