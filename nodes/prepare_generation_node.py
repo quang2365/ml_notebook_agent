@@ -16,8 +16,8 @@ def prepare_generation_node(state:State) ->dict:
 
     if not sections:
         error_message = (
-            "Không thể chuẩn bị generation: "
-            "notebook plan không có section."
+            "Unable to prepare generation: "
+            "notebook plan has no section."
         )
 
         return {
@@ -53,13 +53,13 @@ def prepare_generation_node(state:State) ->dict:
 
         "section_retry_attempts": 0,
 
-        # Xóa lỗi tổng quát cũ.
+        # Remove the old generic error.
         "error": None,
 
         "messages": [
             AIMessage(
                 content=(
-                    "Đã chuẩn bị generation cho "
+                    "Prepared generation for "
                     f"{len(sections)} sections."
                 )
             )

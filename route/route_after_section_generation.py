@@ -2,7 +2,6 @@ from state import State
 MAX_SECTION_RETRY_ATTEMPTS = 3
 
 def route_after_section_generation(state: State) -> str:
-    """Continue section generation, validate completed cells, or stop."""
     attempts = state.get("section_retry_attempts")
     status = state.get("section_generation_status")
     if status == "failed":

@@ -1,18 +1,18 @@
 # Offline test suite
 
-Bộ test kiểm tra workflow mà không gửi request tới NVIDIA hoặc LLM thật.
-`FakeRunnable` nhận prompt giống một LangChain Runnable, ghi lại các lần gọi và
-trả về `AIMessage` hoặc Pydantic structured output đã chuẩn bị trước.
+Test suite for the workflow without sending requests to NVIDIA or a real LLM.
+`FakeRunnable` accepts a prompt like a LangChain Runnable, records calls, and
+returns a pre-prepared `AIMessage` or Pydantic structured output.
 
-## Chạy test
+## Running tests
 
-Chạy toàn bộ test từ thư mục gốc project:
+Run the full test suite from the project root directory:
 
 ```powershell
 .\.venv314\Scripts\python.exe -m unittest discover -s test -p "test_*.py" -v
 ```
 
-Chạy riêng từng nhóm:
+Run each group individually:
 
 ```powershell
 .\.venv314\Scripts\python.exe -m unittest test.test_llm_nodes_offline -v
@@ -27,127 +27,127 @@ Chạy riêng từng nhóm:
 
 ## `test_llm_nodes_offline.py`
 
-Kiểm tra các node thường cần gọi LLM nhưng thay LLM thật bằng dữ liệu giả lập.
+Tests nodes that normally need to call an LLM, substituting fake data for the real LLM.
 
-- `test_analyze_dataset_uses_fake_llm`: xác nhận node phân tích dataset gọi LLM
-  giả đúng một lần và lưu phản hồi vào `summary_llm`.
-- `test_plan_node_accepts_structured_fake_response`: xác nhận node lập kế hoạch
-  chấp nhận structured output `NotebookPlan` và tạo đủ section.
-- `test_fix_plan_receives_old_plan_and_errors`: xác nhận fixer nhận plan cũ cùng
-  toàn bộ lỗi validation, trả plan mới và tăng `fix_plan_attempts`.
-- `test_generate_all_sections_without_network`: mô phỏng gọi
-  `generate_section_node` nhiều lượt, xác nhận section được sinh tuần tự, cells
-  được cộng dồn và không có request mạng.
-- `test_fix_without_validation_errors_uses_cell_status`: kiểm tra nhánh fixer
-  không có lỗi đầu vào vẫn trả đúng cell status và tăng số lần fix.
-- `test_fix_syntax_error_with_fake_structured_response`: đưa code cell lỗi cho
-  LLM giả và xác nhận source được thay bằng code đã sửa.
-- `test_fix_undefined_best_model_with_previous_context`: tái hiện lỗi
-  `best_model`, xác nhận fixer nhận previous code/available names và sửa bằng
-  model đã được lưu trong `trained_models`.
-- `test_rejects_fix_that_keeps_undefined_variable`: xác nhận bản sửa compile
-  được nhưng vẫn còn undefined variable không bị ghi nhận là sửa thành công.
-- `test_build_dataset_context`: xác nhận context mỗi section chỉ chứa thông tin
-  dataset và target cần thiết.
-- `test_build_dataset_context_with_empty_state`: xác nhận context builder không
-  lỗi khi `summary` và `target_analysis` chưa có.
+- `test_analyze_dataset_uses_fake_llm`: verifies the dataset analysis node calls the fake LLM
+  exactly once and stores the response in `summary_llm`.
+- `test_plan_node_accepts_structured_fake_response`: verifies the planning node
+  accepts the `NotebookPlan` structured output and creates all required sections.
+- `test_fix_plan_receives_old_plan_and_errors`: verifies the fixer receives the old plan along with
+  all validation errors, returns a new plan, and increments `fix_plan_attempts`.
+- `test_generate_all_sections_without_network`: simulates calling
+  `generate_section_node` multiple times, verifies sections are generated sequentially, cells
+  are accumulated, and no network requests are made.
+- `test_fix_without_validation_errors_uses_cell_status`: tests the fixer branch
+  with no input errors still returns the correct cell status and increments the fix count.
+- `test_fix_syntax_error_with_fake_structured_response`: feeds code cell errors to the
+  fake LLM and verifies the source is replaced with the fixed code.
+- `test_fix_undefined_best_model_with_previous_context`: reproduces the `best_model` error,
+  verifies the fixer receives the previous code/available names and fixes it using
+  the model stored in `trained_models`.
+- `test_rejects_fix_that_keeps_undefined_variable`: verifies a fix that compiles
+  but still contains an undefined variable is not recorded as a successful fix.
+- `test_build_dataset_context`: verifies each section context only contains the necessary
+  dataset and target information.
+- `test_build_dataset_context_with_empty_state`: verifies the context builder does not
+  error when `summary` and `target_analysis` are not yet available.
 
 ## `test_prepare_generation.py`
 
-Kiểm tra node khởi tạo một phiên generation mới trước vòng lặp section.
+Tests the node that initializes a new generation session before the section loop.
 
-- `test_resets_old_generation_data`: xác nhận cells, lỗi, index, section ID và
-  retry từ phiên cũ được reset đồng bộ.
-- `test_fails_without_notebook_plan`: xác nhận generation dừng trước khi gọi LLM
-  nếu không có notebook plan.
-- `test_fails_with_empty_sections`: xác nhận plan có `sections=[]` được báo lỗi
-  thay vì đi vào vòng generate.
+- `test_resets_old_generation_data`: verifies cells, errors, index, section ID, and
+  retries from the previous session are reset together.
+- `test_fails_without_notebook_plan`: verifies generation stops before calling the LLM
+  if there is no notebook plan.
+- `test_fails_with_empty_sections`: verifies a plan with `sections=[]` reports an error
+  instead of entering the generation loop.
 
 ## `test_generate_section.py`
 
-Kiểm tra trực tiếp node sinh một section và route điều khiển vòng lặp graph.
+Tests the node that generates one section directly and the route controlling the graph loop.
 
-- `test_generates_one_section`: xác nhận mỗi lần gọi chỉ sinh một section, tăng
-  index một đơn vị và giữ `pending` khi vẫn còn section.
-- `test_appends_to_existing_cells`: xác nhận cells mới được nối vào cells cũ,
-  không reset section trước và chuyển `success` ở section cuối.
-- `test_failure_preserves_progress`: giả lập section lỗi, xác nhận cells cũ,
-  index và section đã hoàn thành vẫn được giữ để có thể resume.
-- `test_continue_when_sections_remain`: route trả `continue` khi vẫn còn section.
-- `test_complete_after_last_section`: route trả `complete` khi đã sinh hết để
-  graph chuyển sang `validate_cells`.
-- `test_failed_generation_stops`: route trả `failed` khi generation thất bại,
-  tránh tiếp tục với notebook chưa hoàn chỉnh.
-- `test_retry_failed_section_when_attempts_remain`: xác nhận route trả `retry`
-  và giữ nguyên section hiện tại khi vẫn còn lượt thử.
-- `test_stop_after_section_retry_limit`: xác nhận route trả `failed` khi số lần
-  thử đã đạt giới hạn, ngăn vòng lặp generation vô hạn.
+- `test_generates_one_section`: verifies each call generates only one section, increments the
+  index by one, and keeps `pending` while sections remain.
+- `test_appends_to_existing_cells`: verifies new cells are appended to existing cells,
+  does not reset the previous section, and transitions to `success` on the last section.
+- `test_failure_preserves_progress`: simulates a failing section, verifies existing cells,
+  index, and completed sections are retained so execution can resume.
+- `test_continue_when_sections_remain`: route returns `continue` when sections still remain.
+- `test_complete_after_last_section`: route returns `complete` after all sections have been generated so
+  the graph moves to `validate_cells`.
+- `test_failed_generation_stops`: route returns `failed` when generation fails,
+  avoiding continuation with an incomplete notebook.
+- `test_retry_failed_section_when_attempts_remain`: verifies the route returns `retry`
+  and keeps the current section unchanged while retry attempts remain.
+- `test_stop_after_section_retry_limit`: verifies the route returns `failed` when the number of
+  attempts reaches the limit, preventing an infinite generation loop.
 
 ## `test_validation_and_routes.py`
 
-Kiểm tra validator chạy bằng Python và route giới hạn vòng sửa.
+Tests that the validator runs in Python and that the route limits the fix loop.
 
-- `test_valid_plan`: xác nhận notebook plan hợp lệ không tạo lỗi validation.
-- `test_collects_multiple_plan_errors`: xác nhận validator tổng hợp nhiều lỗi
-  plan trong một lượt thay vì dừng ở lỗi đầu tiên.
-- `test_missing_cells_uses_cell_validation_status`: xác nhận thiếu cells trả
-  `validation_cell_status="invalid"` cùng lỗi `missing_cells`.
-- `test_valid_cells`: xác nhận cells đúng schema, syntax và dependency là valid.
-- `test_invalid_syntax`: xác nhận Python syntax error được phát hiện.
-- `test_plan_route`: kiểm tra các nhánh `valid`, `fix`, `failed` và giới hạn số
-  vòng sửa plan.
-- `test_cell_route`: kiểm tra các nhánh `valid`, `fix`, `failed` và giới hạn số
-  vòng sửa cell.
+- `test_valid_plan`: verifies a valid notebook plan does not produce validation errors.
+- `test_collects_multiple_plan_errors`: verifies the validator aggregates multiple plan
+  errors in one pass instead of stopping at the first error.
+- `test_missing_cells_uses_cell_validation_status`: verifies missing cells return
+  `validation_cell_status="invalid"` along with `missing_cells` errors.
+- `test_valid_cells`: verifies cells with correct schema, syntax, and dependencies are valid.
+- `test_invalid_syntax`: verifies Python syntax errors are detected.
+- `test_plan_route`: tests the `valid`, `fix`, and `failed` branches and the limit on the number of
+  plan fix loops.
+- `test_cell_route`: tests the `valid`, `fix`, and `failed` branches and the limit on the number of
+  cell fix loops.
 
 ## `test_notebook_builder.py`
 
-Kiểm tra chuyển JSON của agent thành cấu trúc Jupyter Notebook.
+Tests converting the agent's JSON into a Jupyter Notebook structure.
 
-- `test_object_to_code_cell`: chuyển dictionary agent thành code cell đúng chuẩn
-  Jupyter, có `execution_count` và `outputs`.
-- `test_json_string_with_cells_wrapper`: parse JSON string có wrapper `cells` và
-  chuyển toàn bộ phần tử thành notebook cells.
-- `test_builder_writes_valid_ipynb`: xác nhận builder tạo `.ipynb` đúng
-  `nbformat`, số cell và trạng thái build.
+- `test_object_to_code_cell`: converts an agent dictionary into a standard Jupyter code cell,
+  with `execution_count` and `outputs`.
+- `test_json_string_with_cells_wrapper`: parses a JSON string with a `cells` wrapper and
+  converts all elements into notebook cells.
+- `test_builder_writes_valid_ipynb`: verifies the builder creates a `.ipynb` file with correct
+  `nbformat`, cell count, and build status.
 
 ## `test_full_rendered_notebook.py`
 
-Giả lập notebook Machine Learning hoàn chỉnh gồm 10 section và 30 cells.
+Simulates a complete Machine Learning notebook with 10 sections and 30 cells.
 
-- `test_complete_render_contains_30_cells`: xác nhận 10 lượt LLM giả tạo đúng 30
-  cells, gồm 20 code cells và 10 markdown cells.
-- `test_complete_render_passes_static_and_dependency_validation`: xác nhận
-  notebook lớn vượt qua syntax và dependency validation.
-- `test_complete_render_builds_30_cell_ipynb`: xác nhận 30 cells được ghi thành
-  file `.ipynb` hoàn chỉnh.
-- `test_validator_detects_error_in_large_render`: chèn syntax error vào notebook
-  lớn và xác nhận validator phát hiện đúng lỗi.
+- `test_complete_render_contains_30_cells`: verifies 10 fake LLM turns generate exactly 30
+  cells, including 20 code cells and 10 markdown cells.
+- `test_complete_render_passes_static_and_dependency_validation`: verifies a
+  large notebook passes syntax and dependency validation.
+- `test_complete_render_builds_30_cell_ipynb`: verifies 30 cells are written into
+  a complete `.ipynb` file.
+- `test_validator_detects_error_in_large_render`: injects a syntax error into the large
+  notebook and verifies the validator detects the correct error.
 
-## Dữ liệu hỗ trợ
+## Supporting data
 
-- `fakes.py`: cung cấp `FakeRunnable`, notebook plan và structured response giả.
-- `json_samples/`: chứa JSON mẫu cho JSON-to-cell và notebook builder.
+- `fakes.py`: provides `FakeRunnable`, a notebook plan, and fake structured responses.
+- `json_samples/`: contains sample JSON for JSON-to-cell and notebook builder.
 
 ## `test_model_selection.py`
 
-- `test_create_deepseek_model_when_selected`: xác nhận lựa chọn DeepSeek dùng
-  model `deepseek-v4-flash`, endpoint DeepSeek và `DEEPSEEK_API_KEY`.
-- `test_keep_nvidia_model_when_deepseek_not_selected`: xác nhận lựa chọn mặc
-  định vẫn dùng NVIDIA Nemotron và `NVIDIA_API_KEY`.
-- `test_prompt_accepts_deepseek`: xác nhận câu trả lời `yes` bật DeepSeek.
-- `test_prompt_defaults_to_current_model`: xác nhận Enter giữ model hiện tại.
+- `test_create_deepseek_model_when_selected`: verifies selecting DeepSeek uses
+  the `deepseek-v4-flash` model, the DeepSeek endpoint, and `DEEPSEEK_API_KEY`.
+- `test_keep_nvidia_model_when_deepseek_not_selected`: verifies the default
+  selection still uses NVIDIA Nemotron and `NVIDIA_API_KEY`.
+- `test_prompt_accepts_deepseek`: verifies a `yes` answer enables DeepSeek.
+- `test_prompt_defaults_to_current_model`: verifies pressing Enter keeps the current model.
 
 ## `test_execute_notebook.py`
 
-- `test_missing_notebook_path`: xác nhận node báo lỗi khi State chưa có đường
-  dẫn notebook.
-- `test_notebook_file_does_not_exist`: xác nhận node báo lỗi khi file notebook
-  không tồn tại.
-- `test_successful_execution`: giả lập kernel thực thi thành công và xác nhận
-  node cập nhật `execution_status=success`.
-- `test_cell_execution_error`: giả lập lỗi runtime trong cell và xác nhận node
-  lưu lỗi dưới `execution_error`.
+- `test_missing_notebook_path`: verifies the node reports errors when State does not yet have a notebook
+  path.
+- `test_notebook_file_does_not_exist`: verifies the node reports errors when the notebook file
+  does not exist.
+- `test_successful_execution`: simulates successful kernel execution and verifies the
+  node updates `execution_status=success`.
+- `test_cell_execution_error`: simulates runtime errors in the cell and verifies the node
+  stores errors under `execution_error`.
 
-Nếu test offline thành công nhưng `main.py` gặp `429` hoặc timeout, nguyên nhân
-thường thuộc API thật. Nếu test offline thất bại, cần sửa node, route, schema
-hoặc validator trước khi gọi LLM.
+If the offline tests pass but `main.py` encounters `429` or a timeout, the cause is
+usually the real API. If the offline tests fail, fix the node, route, schema,
+or validator before calling the LLM.

@@ -15,16 +15,14 @@ def validate_cells(
     seen_ids: set[str] = set()
 
     for index, cell in enumerate(cells):
-        # ==========================
-        # 1. Kiểm tra cell có phải dict
-        # ==========================
+
         if not isinstance(cell, dict):
             errors.append(
                 {
                     "cell_index": index,
                     "error_type": "invalid_cell",
                     "message": (
-                        "Cell không phải dictionary."
+                        "Cell is not a dictionary."
                     ),
                 }
             )
@@ -32,9 +30,6 @@ def validate_cells(
 
         cell_id = cell.get("cell_id")
 
-        # ==========================
-        # 2. Kiểm tra field bắt buộc
-        # ==========================
         missing_fields = (
             REQUIRED_CELL_FIELDS
             - set(cell.keys())
@@ -50,22 +45,18 @@ def validate_cells(
                         missing_fields
                     ),
                     "message": (
-                        "Cell thiếu field bắt buộc: "
+                        "Cell is missing required fields: "
                         f"{sorted(missing_fields)}"
                     ),
                 }
             )
-
-        # ==========================
-        # 3. Kiểm tra cell_id
-        # ==========================
         if not cell_id:
             errors.append(
                 {
                     "cell_index": index,
                     "error_type": "missing_cell_id",
                     "message": (
-                        "Cell không có cell_id."
+                        "Cell has no cell_id."
                     ),
                 }
             )
@@ -78,7 +69,7 @@ def validate_cells(
                     "error_type": "duplicate_cell_id",
                     "message": (
                         f"cell_id `{cell_id}` "
-                        "bị trùng."
+                        "is duplicated."
                     ),
                 }
             )
@@ -86,9 +77,6 @@ def validate_cells(
         else:
             seen_ids.add(cell_id)
 
-        # ==========================
-        # 4. Kiểm tra cell_type
-        # ==========================
         cell_type = cell.get("cell_type")
 
         if cell_type not in {
@@ -102,15 +90,12 @@ def validate_cells(
                     "error_type": "invalid_cell_type",
                     "message": (
                         f"cell_type `{cell_type}` "
-                        "không hợp lệ."
+                        "is invalid."
                     ),
                 }
             )
             continue
 
-        # ==========================
-        # 5. Kiểm tra source
-        # ==========================
         source = cell.get("source")
 
         if not isinstance(source, str):
@@ -120,7 +105,7 @@ def validate_cells(
                     "cell_id": cell_id,
                     "error_type": "invalid_source",
                     "message": (
-                        "source phải là string."
+                        "source must be a string."
                     ),
                 }
             )
@@ -133,21 +118,15 @@ def validate_cells(
                     "cell_id": cell_id,
                     "error_type": "empty_source",
                     "message": (
-                        "Cell có source rỗng."
+                        "Cell has an empty source."
                     ),
                 }
             )
             continue
 
-        # ==========================
-        # 6. Markdown không cần compile
-        # ==========================
         if cell_type == "markdown":
             continue
 
-        # ==========================
-        # 7. Code fence không nên tồn tại
-        # ==========================
         if "```python" in source:
             errors.append(
                 {
@@ -155,15 +134,12 @@ def validate_cells(
                     "cell_id": cell_id,
                     "error_type": "code_fence",
                     "message": (
-                        "Code cell chứa "
-                        "Markdown code fence."
+                        "Code cells contains "
+                        "a Markdown code fence."
                     ),
                 }
             )
 
-        # ==========================
-        # 8. Kiểm tra Python syntax
-        # ==========================
         try:
             compile(
                 source,

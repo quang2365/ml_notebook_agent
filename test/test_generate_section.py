@@ -80,7 +80,7 @@ class GenerateSectionTests(unittest.TestCase):
             1,
         )
 
-        # Vẫn còn section 2.
+        # Still on section 2.
         self.assertEqual(
             result["section_generation_status"],
             "pending",
@@ -208,7 +208,7 @@ class GenerateSectionTests(unittest.TestCase):
             [old_cell],
         )
 
-        # Không tăng vì section 2 chưa thành công.
+        # Not incrementing because section 2 has not succeeded.
         self.assertEqual(
             result["current_section_index"],
             1,
@@ -339,7 +339,7 @@ class SectionGenerationRouteTests(
     def test_retry_failed_section_when_attempts_remain(
         self,
     ) -> None:
-        """Retry đúng section hiện tại khi vẫn còn lượt thử."""
+        """Retry the current section while retry attempts remain."""
         result = route_after_section_generation(
             {
                 "section_generation_status": "failed",
@@ -356,7 +356,7 @@ class SectionGenerationRouteTests(
     def test_stop_after_section_retry_limit(
         self,
     ) -> None:
-        """Dừng workflow khi section đã dùng hết lượt retry."""
+        """Stop the workflow when the section has exhausted its retry attempts."""
         result = route_after_section_generation(
             {
                 "section_generation_status": "failed",

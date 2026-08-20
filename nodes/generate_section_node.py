@@ -11,17 +11,17 @@ def generate_section_node(
     state: State,
 ) -> dict:
     """
-    Sinh cells cho đúng một section.
+    Generate cells for exactly one section.
 
-    Tác dụng:
-    - Mỗi lần node chỉ gọi LLM cho một section.
-    - Nối cells mới vào notebook_cells hiện có.
-    - Tăng current_section_index sau khi thành công.
-    - Cho phép LangGraph checkpoint sau từng section.
+    Effects:
+    - Each time the node calls the LLM for only one section.
+    - Append new cells to the existing notebook_cells.
+    - Increment current_section_index after success.
+    - Enable a LangGraph checkpoint after each section.
     """
 
     # ==================================================
-    # 1. ĐỌC NOTEBOOK PLAN
+    # 1. READ NOTEBOOK PLAN
     # ==================================================
 
     notebook_plan = (
@@ -34,11 +34,11 @@ def generate_section_node(
         or []
     )
 
-    # Không có section thì không thể generate.
+    # Without a section, generation is not possible.
     if not sections:
         error_message = (
-            "Không thể generate section: "
-            "notebook plan không có section."
+            "Cannot generate section: "
+            "the notebook plan has no sections."
         )
 
         return {
@@ -59,23 +59,23 @@ def generate_section_node(
         }
 
     # ==================================================
-    # 2. XÁC ĐỊNH SECTION HIỆN TẠI
+    # 2. DETERMINE CURRENT SECTION
     # ==================================================
 
-    # Index bắt đầu từ 0:
-    # 0 = section đầu tiên
-    # 1 = section thứ hai
+    # Index starts at 0:
+    # 0 = first section
+    # 1 = second section
     # ...
     current_index = state.get(
         "current_section_index",
         0,
     )
 
-    # Index âm là state không hợp lệ.
+    # A negative index is an invalid state.
     if current_index < 0:
         error_message = (
-            "current_section_index không thể "
-            "nhỏ hơn 0."
+            "current_section_index cannot "
+            "be less than 0."
         )
 
         return {
@@ -92,8 +92,8 @@ def generate_section_node(
             "error": error_message,
         }
 
-    # Nếu index đã bằng số section thì toàn bộ
-    # section đã được sinh xong.
+    # If the index is already equal to the number of sections, all
+    # sections have been generated.
     if current_index >= len(sections):
         return {
             "section_generation_status": "success",
@@ -102,24 +102,24 @@ def generate_section_node(
             "messages": [
                 AIMessage(
                     content=(
-                        "Tất cả notebook sections "
-                        "đã được sinh."
+                        "All notebook sections "
+                        "have been generated."
                     )
                 )
             ],
         }
 
-    # Lấy đúng một section theo index hiện tại.
+    # Get exactly one section based on the current index.
     section = sections[current_index]
 
-    # Nếu plan thiếu section_id, tạo ID dự phòng.
+    # If the plan lacks section_id, create a fallback ID.
     section_id = (
         section.get("section_id")
         or f"section_{current_index + 1}"
     )
 
     # ==================================================
-    # 3. KIỂM TRA INPUT CẦN CHO LLM
+    # 3. CHECK INPUT REQUIRED FOR LLM
     # ==================================================
 
     dataset_path = state.get("dataset_path")
@@ -134,7 +134,7 @@ def generate_section_node(
             section_id=section_id,
             error_type="missing_dataset_path",
             message=(
-                "Không có dataset_path để "
+                "No dataset_path to "
                 f"generate `{section_id}`."
             ),
         )
@@ -145,7 +145,7 @@ def generate_section_node(
             section_id=section_id,
             error_type="missing_target_column",
             message=(
-                "Không có target_column để "
+                "No target_column to "
                 f"generate `{section_id}`."
             ),
         )
@@ -156,23 +156,23 @@ def generate_section_node(
             section_id=section_id,
             error_type="missing_problem_type",
             message=(
-                "Không có problem_type để "
+                "No problem_type to "
                 f"generate `{section_id}`."
             ),
         )
 
     # ==================================================
-    # 4. TẠO DATASET CONTEXT
+    # 4. CREATE DATASET CONTEXT
     # ==================================================
 
-    # Tái sử dụng hàm đã tách ở bước trước.
-    # Nhờ vậy mỗi section nhận cùng cấu trúc context.
+    # Reuse the function extracted in the previous step.
+    # Thus, each section receives the same context structure.
     dataset_context = build_dataset_context(
         state
     )
 
 
-    # Markdown, output và message không tham gia context để tiết kiệm token.
+    # Markdown, output, and message are not included in the context to save tokens.
     previous_code_cells = [
         {
             "cell_id": cell.get("cell_id"),
@@ -188,7 +188,7 @@ def generate_section_node(
     ]
 
     # ==================================================
-    # 5. GENERATE ĐÚNG MỘT SECTION
+    # 5. GENERATE EXACTLY ONE SECTION
     # ==================================================
 
     result = generate_one_section(
@@ -201,8 +201,8 @@ def generate_section_node(
         previous_code_cells=previous_code_cells,
     )
 
-    # generate_one_section đã tự retry API.
-    # Nếu vẫn thất bại, giữ nguyên cells cũ và index cũ.
+    # generate_one_section automatically retries the API.
+    # If it still fails, keep the old cells and old index.
     if result.get("status") == "failed":
         return build_generation_failure(
             state=state,
@@ -213,14 +213,14 @@ def generate_section_node(
             message=(
                 result.get("error")
                 or (
-                    "Không thể generate "
+                    "Cannot generate "
                     f"`{section_id}`."
                 )
             ),
         )
 
     # ==================================================
-    # 6. NỐI CELLS MỚI VÀO STATE
+    # 6. APPEND NEW CELLS TO STATE
     # ==================================================
 
     old_cells = (
@@ -233,18 +233,18 @@ def generate_section_node(
         or []
     )
 
-    # Không cho phép section thành công nhưng không có cell.
+    # Do not allow a section to succeed if it produces no cells.
     if not new_cells:
         return build_generation_failure(
             state=state,
             section_id=section_id,
             error_type="empty_section",
             message=(
-                f"`{section_id}` không tạo cell nào."
+                f"`{section_id}` did not create any cells."
             ),
         )
 
-    # Tạo list mới thay vì mutate list trong State.
+    # Create a new list instead of mutating the list in State.
     updated_cells = [
         *old_cells,
         *new_cells,
@@ -255,17 +255,17 @@ def generate_section_node(
         or []
     )
 
-    # Tạo danh sách mới để tránh mutate state cũ.
+    # Create a new list to avoid mutating the old state.
     updated_generated_ids = [
         *old_generated_ids,
         section_id,
     ]#giai thich
 
-    # Chuyển con trỏ sang section tiếp theo.
+    # Move the pointer to the next section.
     next_index = current_index + 1
 
-    # Nếu vừa sinh section cuối, trạng thái là success.
-    # Nếu vẫn còn section, trạng thái là pending.
+    # If the last section was just generated, the status is success.
+    # If sections remain, the status is pending.
     generation_status = (
         "success"
         if next_index >= len(sections)
@@ -273,21 +273,21 @@ def generate_section_node(
     )
 
     return {
-        # Giữ cells cũ và nối thêm cells section mới.
+        # Keep the old cells and append the new section's cells.
         "notebook_cells": updated_cells,
 
-        # Lưu section đã hoàn thành.
+        # Save the completed section.
         "generated_section_ids": (
             updated_generated_ids
         ),
 
-        # Lần sau node sẽ lấy section tiếp theo.
+        # Next time, the node will get the next section.
         "current_section_index": next_index,
 
-        # Section thành công nên reset retry về 0.
+        # The section succeeded, so reset retry to 0.
         "section_retry_attempts": 0,
 
-        # Pending nếu còn section, success nếu đã hết.
+        # Pending if sections remain, success if none remain.
         "section_generation_status": (
             generation_status
         ),
@@ -297,9 +297,9 @@ def generate_section_node(
         "messages": [
             AIMessage(
                 content=(
-                    f"Đã generate `{section_id}` "
-                    f"với {len(new_cells)} cells. "
-                    f"Tiến trình: "
+                    f"Generated `{section_id}` "
+                    f"with {len(new_cells)} cells. "
+                    f"Progress: "
                     f"{next_index}/{len(sections)}."
                 )
             )
@@ -314,13 +314,13 @@ def build_generation_failure(
     message: str,
 ) -> dict:
     """
-    Tạo kết quả lỗi thống nhất cho generation.
+    Create a unified error result for generation.
 
-    Tác dụng:
-    - Không lặp code xử lý lỗi.
-    - Giữ lại cells đã sinh ở section trước.
-    - Giữ current_section_index để có thể retry.
-    - Tăng số lần section hiện tại thất bại.
+    Effects:
+    - No repeated error-handling code.
+    - Retain cells generated in the previous section.
+    - Keep current_section_index to allow retry.
+    - Increment the current section's failure count.
     """
 
     old_errors = (
@@ -344,20 +344,20 @@ def build_generation_failure(
     }
 
     return {
-        # Trả lại cells cũ để thể hiện rõ
-        # chúng không bị xóa khi section mới lỗi.
+        # Return the old cells to make it clear
+        # that they are not deleted when the new section fails.
         "notebook_cells": (
             state.get("notebook_cells")
             or []
         ),
 
-        # Không tăng index khi section chưa thành công.
+        # Do not increment the index when the section has not yet succeeded.
         "current_section_index": state.get(
             "current_section_index",
             0,
         ),
 
-        # Không thêm section lỗi vào danh sách hoàn thành.
+        # Do not add the failed section to the completed list.
         "generated_section_ids": (
             state.get("generated_section_ids")
             or []

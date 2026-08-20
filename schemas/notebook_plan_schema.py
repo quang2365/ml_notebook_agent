@@ -3,52 +3,52 @@ from pydantic import BaseModel, Field
 
 class NotebookSection(BaseModel):
     section_id: str = Field(
-        description="Mã duy nhất của phần notebook."
+        description="Unique identifier of the notebook section."
     )
 
     title: str = Field(
-        description="Tiêu đề phần notebook."
+        description="Notebook section title."
     )
 
     objective: str = Field(
-        description="Mục tiêu của phần này."
+        description="Objective of this section."
     )
 
     cell_types: list[str] = Field(
         description=(
-            "Danh sách loại cell cần tạo, "
-            "ví dụ markdown hoặc code."
+            "List of cell types to create, "
+            "for example markdown or code."
         )
     )
 
     tasks: list[str] = Field(
-        description="Các công việc cần thực hiện."
+        description="Tasks to complete."
     )
 
 
 class NotebookPlan(BaseModel):
-    notebook_title: str = Field(description="Tên notebook.")
+    notebook_title: str = Field(description="Notebook name.")
 
-    target_column: str = Field(description="Cột target đã xác nhận.")
+    target_column: str = Field(description="Confirmed target column.")
 
     problem_type: str = Field(description=(
-            "Loại bài toán regression "
-            "hoặc classification."
+            "Problem type regression "
+            "or classification."
         )
     )
 
-    objective: str = Field(description="Mục tiêu tổng thể của notebook.")
+    objective: str = Field(description="Overall notebook objective.")
 
-    evaluation_metrics: list[str] = Field(description="Các metric sẽ sử dụng.")
+    evaluation_metrics: list[str] = Field(description="Metrics to use.")
 
-    candidate_models: list[str] = Field(description="Các mô hình dự kiến thử nghiệm.")
+    candidate_models: list[str] = Field(description="Candidate models to test.")
 
     sections: list[NotebookSection] = Field(
     min_length=8,
     max_length=10,
     description=(
-        "Danh sách từ 8 đến 10 section "
-        "của notebook theo đúng thứ tự "
-        "thực hiện Machine Learning."
+        "List of 8 to 10 notebook sections "
+        "in the correct order for "
+        "performing Machine Learning."
     ),
 )

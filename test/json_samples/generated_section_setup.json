@@ -6,8 +6,8 @@
       "section_id": "section_1",
       "cell_type": "markdown",
       "title": "Machine Learning Notebook",
-      "source": "# Machine Learning Notebook\n\nNotebook được tạo tự động từ dataset housing.",
-      "purpose": "Giới thiệu mục tiêu của notebook.",
+      "source": "# Machine Learning Notebook\n\nNotebook was automatically generated from the housing dataset.",
+      "purpose": "Introduce the objectives of the notebook.",
       "expected_output": null
     },
     {
@@ -16,8 +16,8 @@
       "cell_type": "code",
       "title": "Import libraries",
       "source": "import pandas as pd\nimport numpy as np\n\nRANDOM_STATE = 42",
-      "purpose": "Import các thư viện cần thiết.",
-      "expected_output": "Các thư viện được import thành công."
+      "purpose": "Import the necessary libraries.",
+      "expected_output": "The libraries were imported successfully."
     }
   ]
 }

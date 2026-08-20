@@ -19,49 +19,49 @@ review_pipeline_llm = llm.with_structured_output(
 
 
 PIPELINE_REVIEW_SYSTEM_PROMPT = """
-Bạn là chuyên gia kiểm tra Python Machine Learning notebook.
+You are an expert in reviewing Python Machine Learning notebooks.
 
-Nhiệm vụ của bạn là đánh giá tính đúng đắn của TOÀN BỘ
-Machine Learning pipeline dựa trên:
+Your task is to evaluate the correctness of the ENTIRE
+Machine Learning pipeline based on:
 
 1. Dataset context.
 2. Target column.
 3. Problem type.
 4. Notebook plan.
-5. Toàn bộ code cells theo đúng thứ tự thực thi.
+5. All code cells in the correct execution order.
 
-Validator Python trước đó đã kiểm tra cấu trúc, cú pháp và một
-phần dependency. Bạn phải tập trung vào lỗi NGỮ NGHĨA và lỗi
-tương tác giữa các cell.
+The previous Python validator checked the structure, syntax, and a
+part of the dependency. You must focus on SEMANTIC errors and
+interaction errors between cells.
 
-CÁC NHÓM LỖI CẦN KIỂM TRA:
+ERROR GROUPS TO CHECK:
 
 1. DATA LEAKAGE
 
-- Không được fit preprocessing trên test data.
-- Không được dùng target làm feature.
-- Không được sử dụng dữ liệu test để lựa chọn model.
-- Việc split train/test phải diễn ra trước những bước học
-  tham số từ dữ liệu.
+- Do not fit preprocessing on test data.
+- Do not use the target as a feature.
+- Do not use test data to select the model.
+- The train/test split must occur before the steps that learn
+  parameters from data.
 
 2. PREPROCESSING
 
-- Train và test phải dùng cùng một fitted preprocessor.
-- Không được gọi fit_transform riêng trên test data.
-- Feature engineering phải nhất quán giữa train và test.
-- Pipeline phải tương thích với kiểu dữ liệu truyền giữa
-  các bước.
+- Train and test must use the same fitted preprocessor.
+- Do not call fit_transform separately on test data.
+- Feature engineering must be consistent between train and test.
+- The pipeline must be compatible with the data type passed between
+  steps.
 
-3. PANDAS VÀ NUMPY COMPATIBILITY
+3. PANDAS AND NUMPY COMPATIBILITY
 
-- Nếu FunctionTransformer truy cập cột bằng cú pháp
-  X["column"], đầu vào của nó phải là pandas DataFrame.
-- SimpleImputer, StandardScaler hoặc ColumnTransformer
-  có thể biến DataFrame thành NumPy array.
-- Không được đặt FunctionTransformer dùng tên cột sau một
-  transformer đã chuyển dữ liệu thành NumPy array, trừ khi
-  notebook đảm bảo đầu ra pandas.
-- Cấu trúc ưu tiên là:
+- If FunctionTransformer accesses a column with the syntax
+  X["column"], its input must be a pandas DataFrame.
+- SimpleImputer, StandardScaler, or ColumnTransformer
+  can convert a DataFrame to a NumPy array.
+- Do not place a FunctionTransformer that uses column names after a
+  transformer that converted the data to a NumPy array, unless
+  the notebook guarantees pandas output.
+- The preferred structure is:
 
   Pipeline([
       ("feature_engineering", FunctionTransformer(...)),
@@ -70,61 +70,61 @@ CÁC NHÓM LỖI CẦN KIỂM TRA:
 
 4. VARIABLE CONSISTENCY
 
-- Một biến phải được tạo trước khi sử dụng.
-- Tên model phải nhất quán giữa trained_models,
-  predictions và model_results.
-- Không được sử dụng nhầm biến metric của model trước hoặc
+- A variable must be created before it is used.
+- Model names must be consistent among trained_models,
+  predictions and model_results.
+- Do not accidentally use the model's metric variable before or
   model sau.
-- Không được âm thầm ghi đè dữ liệu quan trọng bằng kiểu
-  dữ liệu không tương thích.
+- Do not silently overwrite important data with an
+  incompatible data type.
 
 5. MODEL TRAINING
 
-- Model phải phù hợp với regression hoặc classification.
-- Model phải được fit trên đúng training features và target.
-- Prediction phải dùng đúng fitted model.
-- Không được tạo metric hoặc prediction giả.
+- The model must be appropriate for regression or classification.
+- The model must be fitted on the correct training features and target.
+- Prediction must use the correct fitted model.
+- Do not create fake metrics or predictions.
 
-6. METRICS VÀ MODEL COMPARISON
+6. METRICS AND MODEL COMPARISON
 
-- Metric phải phù hợp với problem type.
-- Mỗi model phải lưu metric riêng ngay sau khi đánh giá.
-- Không được dùng metric của model cuối cùng cho tất cả model.
-- Bảng model_results phải được tạo từ kết quả thực tế.
-- Việc chọn best_model phải dựa trên metric phù hợp.
+- The metric must be appropriate for the problem type.
+- Each model must store its own metric immediately after evaluation.
+- Do not use the final model's metric for all models.
+- The model_results table must be created from actual results.
+- The selection of best_model must be based on the appropriate metric.
 
-7. TARGET VÀ DATASET
+7. TARGET AND DATASET
 
-- Target phải đúng với TARGET COLUMN đã cung cấp.
-- Không được tự thay đổi dataset path.
-- Không được thay đổi problem type.
-- Không được đưa target vào preprocessing của features.
+- The target must match the provided TARGET COLUMN.
+- Do not arbitrarily change the dataset path.
+- Do not change the problem type.
+- Do not include the target in feature preprocessing.
 
-QUY TẮC TRẢ KẾT QUẢ:
+RULES FOR RETURNING RESULTS:
 
-1. Chỉ trả status="valid" khi toàn bộ pipeline nhất quán.
-2. Khi status="valid", errors phải là danh sách rỗng.
-3. Khi status="invalid", errors phải chứa ít nhất một lỗi.
-4. Mỗi lỗi phải chỉ ra cell_id chính xác cần sửa.
-5. cell_id phải tồn tại trong danh sách code cells.
-6. Không yêu cầu sửa markdown cell.
-7. Không báo lỗi chỉ dựa trên suy đoán không có bằng chứng.
-8. suggestion phải mô tả cách sửa nhỏ nhất có thể.
-9. Không viết lại code của notebook.
-10. Không trả Markdown code fence.
+1. Only return status="valid" when the entire pipeline is consistent.
+2. When status="valid", errors must be an empty list.
+3. When status="invalid", errors must contain at least one error.
+4. Each error must indicate the exact cell_id that needs to be fixed.
+5. cell_id must exist in the list of code cells.
+6. Do not require fixing markdown cells.
+7. Do not report errors based only on speculation without evidence.
+8. suggestion must describe the smallest possible fix.
+9. Do not rewrite the code of the notebook.
+10. Do not return a Markdown code fence.
 """
 
 
 def review_pipeline_node(state: State) -> dict:
     """
-    Đánh giá ngữ nghĩa toàn bộ notebook pipeline sau khi
-    các cell đã vượt qua static validation.
+    Perform semantic evaluation of the entire notebook pipeline after
+    the cells have passed static validation.
     """
 
     cells = state.get("notebook_cells") or []
 
 
-    # không liên quan làm nhiễu quá trình đánh giá.
+    # irrelevant; it interferes with the evaluation process.
     code_cells = [
         {
             "cell_id": cell.get("cell_id"),
@@ -141,7 +141,7 @@ def review_pipeline_node(state: State) -> dict:
 
     if not code_cells:
         message = (
-            "Không có code cell để đánh giá pipeline."
+            "No code cell to evaluate the pipeline."
         )
 
         return {
@@ -152,7 +152,7 @@ def review_pipeline_node(state: State) -> dict:
                     "error_type": "other",
                     "message": message,
                     "suggestion": (
-                        "Kiểm tra lại bước generate_cells."
+                        "Check the generate_cells step again."
                     ),
                     "related_cell_ids": [],
                 }
@@ -200,7 +200,7 @@ def review_pipeline_node(state: State) -> dict:
                 ),
                 HumanMessage(
                     content=(
-                        "Hãy đánh giá pipeline sau đây:\n\n"
+                        "Please evaluate the following pipeline:\n\n"
                         + json.dumps(
                             review_context,
                             ensure_ascii=False,
@@ -216,7 +216,7 @@ def review_pipeline_node(state: State) -> dict:
         errors = result_dict.get("errors") or []
 
 
-        # Chuẩn hóa status dựa trên danh sách lỗi thực tế.
+        # Normalize status based on the actual error list.
         if errors:
             status = "invalid"
         else:
@@ -263,20 +263,20 @@ def review_pipeline_node(state: State) -> dict:
                         if related_id in valid_cell_ids
                     ],
 
-                    # semantic do pipeline reviewer phát hiện.
+                    # semantic errors detected by the pipeline reviewer.
                     "source": "pipeline_review",
                 }
             )
 
 
-        # reviewer trả về cell_id không tồn tại.
+        # reviewer returned a nonexistent cell_id.
         if invalid_cell_references:
             invalid_ids = ", ".join(
                 str(cell_id)
                 for cell_id in invalid_cell_references
             )
             message = (
-                "Pipeline reviewer trả về cell_id không tồn tại: "
+                "Pipeline reviewer returned a cell_id that does not exist: "
                 f"{invalid_ids}."
             )
             return {
@@ -304,7 +304,7 @@ def review_pipeline_node(state: State) -> dict:
                 normalized_errors
             ),
 
-            # fix_cells_node đang đọc.
+            # fix_cells_node is currently reading.
             "validation_cell_errors": (
                 normalized_errors
                 if final_status == "invalid"
@@ -319,8 +319,8 @@ def review_pipeline_node(state: State) -> dict:
                 None
                 if final_status == "valid"
                 else (
-                    "LLM phát hiện "
-                    f"{len(normalized_errors)} lỗi "
+                    "LLM detected "
+                    f"{len(normalized_errors)} errors "
                     "trong Machine Learning pipeline."
                 )
             ),
@@ -337,7 +337,7 @@ def review_pipeline_node(state: State) -> dict:
 
     except Exception as exc:
         message = (
-            "Không thể đánh giá notebook pipeline: "
+            "Unable to evaluate notebook pipeline: "
             f"{exc}"
         )
 
@@ -352,7 +352,7 @@ def review_pipeline_node(state: State) -> dict:
 
 
 def normalize_source(source: str | list | None) -> str:
-    """Chuẩn hóa source của notebook cell thành chuỗi."""
+    """Normalize the source of a notebook cell into a string."""
 
     if source is None:
         return ""
@@ -368,13 +368,13 @@ def build_review_message(
     summary: str,
     errors: list[dict],
 ) -> str:
-    """Tạo message ngắn để hiển thị kết quả review."""
+    """Create a short message to display the review result."""
 
     if status == "valid":
         return (
             "# Pipeline Review\n\n"
-            "Pipeline đã vượt qua đánh giá ngữ nghĩa "
-            "của LLM.\n\n"
+            "Pipeline passed semantic evaluation "
+            "by the LLM.\n\n"
             f"{summary}"
         )
 
@@ -382,8 +382,8 @@ def build_review_message(
         "# Pipeline Review",
         "",
         (
-            f"Phát hiện **{len(errors)} lỗi "
-            "ngữ nghĩa**."
+            f"Detected **{len(errors)} semantic "
+            "errors**."
         ),
         "",
     ]

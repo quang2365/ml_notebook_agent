@@ -14,7 +14,7 @@ def execute_notebook_node(
     notebook_path = state.get("notebook_path")
 
     if not notebook_path:
-        message = ("Không có notebook_path để thực thi.")
+        message = ("There is no notebook_path to execute.")
         return {
             "execution_status": "failed",
             "execution_error": {
@@ -29,7 +29,7 @@ def execute_notebook_node(
     path = Path(notebook_path)
 
     if not path.exists():
-        message = ( f"Không tìm thấy notebook: {path}")
+        message = ( f"Notebook not found: {path}")
         return {
             "execution_status": "failed",
             "execution_error": {
@@ -49,11 +49,11 @@ def execute_notebook_node(
         client = NotebookClient(notebook, timeout=300,kernel_name="python3")
 
 
-        # không phải từ thư mục output chứa notebook.
+        # not from the output directory containing the notebook.
         execution_cwd = Path.cwd().resolve()
         client.execute(cwd=str(execution_cwd))
 
-        # Ghi cả output sau khi chạy vào notebook.
+        # Also write the output into the notebook after execution.
         with path.open("w",encoding="utf-8") as file:
             nbformat.write(
                 notebook,
@@ -67,7 +67,7 @@ def execute_notebook_node(
             "messages": [
                 AIMessage(
                     content=(
-                        "Notebook đã thực thi thành công."
+                        "Notebook executed successfully."
                     )
                 )
             ],
@@ -116,9 +116,9 @@ def extract_failed_cell(
     notebook,
 ) -> dict | None:
     """
-    Tìm cell phát sinh runtime error trong notebook đã chạy.
+    Find the cell that caused a runtime error in the executed notebook.
 
-    nbclient ghi error vào outputs của cell trước khi ném
+    nbclient writes the error into the cell's outputs before raising
     CellExecutionError.
     """
 

@@ -1,31 +1,31 @@
 # ML Notebook Agent
 
-**ML Notebook Agent** là một dự án xây dựng **AI Agent có khả năng tự động phân tích dataset và tạo Jupyter Notebook cho bài toán Machine Learning**.
+**ML Notebook Agent** is a project that builds an **AI Agent capable of automatically analyzing datasets and creating Jupyter Notebooks for Machine Learning problems**.
 
-Hệ thống được phát triển theo kiến trúc workflow bằng **LangGraph**, trong đó mỗi giai đoạn của quy trình Machine Learning được tách thành các node riêng biệt như kiểm tra dữ liệu, phân tích dataset, đề xuất bài toán, xác nhận target, lập kế hoạch notebook, sinh code, kiểm tra lỗi và tự động sửa lỗi.
+The system is developed according to a workflow architecture using **LangGraph**, in which each stage of the Machine Learning process is separated into independent nodes such as data inspection, dataset analysis, problem proposal, target confirmation, notebook planning, code generation, error checking, and automatic error correction.
 
-Mục tiêu của dự án là xây dựng một agent có thể nhận một dataset đầu vào và từng bước tạo ra một notebook Machine Learning có cấu trúc rõ ràng, nhất quán và có khả năng được kiểm tra trước khi thực thi.
+The goal of the project is to build an agent that can receive an input dataset and gradually create a Machine Learning notebook with a clear, consistent structure and the ability to be verified before execution.
 
 ---
 
-## Mục tiêu của dự án
+## Project Goal
 
-ML Notebook Agent hướng tới việc tự động hóa quy trình:
+ML Notebook Agent aims to automate the process:
 
 ```text
 Dataset
    ↓
-Phân tích dữ liệu
+Analyze data
    ↓
-Đề xuất bài toán Machine Learning
+Propose Machine Learning problem
    ↓
-Người dùng xác nhận Target / Problem Type
+User confirms Target / Problem Type
    ↓
-Phân tích Target
+Analyze Target
    ↓
-Lập kế hoạch Notebook
+Plan Notebook
    ↓
-Sinh từng Section
+Generate each section
    ↓
 Merge Notebook Cells
    ↓
@@ -38,13 +38,13 @@ Automatic Repair
 Jupyter Notebook
 ```
 
-Thay vì yêu cầu LLM sinh toàn bộ notebook trong một lần gọi, hệ thống chia notebook thành nhiều **section nhỏ** và generate từng section riêng biệt. Thiết kế này giúp giảm nguy cơ timeout, giảm kích thước mỗi request và dễ kiểm soát lỗi hơn.
+Instead of asking the LLM to generate the entire notebook in a single call, the system splits the notebook into multiple **small sections** and generates each section separately. This design reduces the risk of timeout, reduces the size of each request, and makes errors easier to control.
 
 ---
 
-## Kiến trúc tổng quan
+## Overall Architecture
 
-Workflow chính hiện tại:
+Current main workflow:
 
 ```text
 START
@@ -83,40 +83,40 @@ review_problem
           └──── validate_cells
 ```
 
-Workflow được quản lý bằng **LangGraph StateGraph** và sử dụng **checkpointer** để hỗ trợ Human-in-the-Loop.
+The workflow is managed by **LangGraph StateGraph** and uses a **checkpointer** to support Human-in-the-Loop.
 
 ---
 
-## Các thành phần chính
+## Main Components
 
 ### 1. Dataset Inspection
 
-Node `inspect_data` chịu trách nhiệm đọc dataset và thu thập các thông tin cơ bản như:
+The `inspect_data` node is responsible for reading the dataset and collecting basic information such as:
 
-- số dòng và số cột;
-- tên các cột;
-- kiểu dữ liệu;
+- the number of rows and columns;
+- column names;
+- data types;
 - numeric columns;
 - categorical columns;
 - missing values;
 - possible ID columns;
-- các thông tin tổng quan cần thiết cho các node phía sau.
+- necessary overview information for the downstream nodes.
 
-### 2. Dataset Analysis bằng LLM
+### 2. Dataset Analysis with LLM
 
-Node `analyze_data` sử dụng LLM để phân tích thông tin dataset đã được thu thập. Kết quả này được dùng làm context cho việc xác định bài toán Machine Learning phù hợp.
+The `analyze_data` node uses an LLM to analyze the dataset information that has been collected. This result is used as context for determining the appropriate Machine Learning problem.
 
 ### 3. Problem Proposal
 
-Node `propose_problem` tự động đề xuất:
+The `propose_problem` node automatically proposes:
 
 - `target_column`;
 - `problem_type`;
-- lý do đề xuất;
-- số lượng giá trị khác nhau của target;
-- mức độ phù hợp của candidate.
+- the reason for the proposal;
+- the number of distinct values of the target;
+- the suitability level of the candidate.
 
-Ví dụ:
+Example:
 
 ```json
 {
@@ -125,34 +125,34 @@ Ví dụ:
   "candidate_score": 3,
   "unique_count": 3842,
   "reasons": [
-    "Tên cột chứa từ khóa: value"
+    "Column name containing keyword: value"
   ]
 }
 ```
 
 ### 4. Human-in-the-Loop
 
-Hệ thống không tự động chấp nhận target do AI đề xuất.
+The system does not automatically accept the target proposed by the AI.
 
-Node `review_problem` sử dụng `interrupt()` của LangGraph để yêu cầu người dùng xác nhận. Người dùng có thể approve, edit hoặc reject đề xuất.
+The `review_problem` node uses LangGraph's `interrupt()` to request user confirmation. The user can approve, edit, or reject the proposal.
 
-Graph được resume bằng:
+The graph is resumed by:
 
 ```python
 Command(resume=decision)
 ```
 
-với cùng `thread_id`.
+using the same `thread_id`.
 
 ---
 
 ## Notebook Planner
 
-Sau khi target được xác nhận, hệ thống tạo một `NotebookPlan`.
+After the target is confirmed, the system creates a `NotebookPlan`.
 
-Notebook hiện được giới hạn khoảng **8–10 section** để tránh sinh notebook quá dài và giảm số lượng request tới LLM.
+The notebook is currently limited to about **8–10 sections** to avoid generating an overly long notebook and to reduce the number of requests to the LLM.
 
-Một cấu trúc notebook điển hình:
+A typical notebook structure:
 
 ```text
 section_1   Setup
@@ -167,27 +167,27 @@ section_9   Model Evaluation
 section_10  Conclusion
 ```
 
-Planner phải đảm bảo thứ tự Machine Learning hợp lý, đặc biệt:
+The planner must ensure a proper Machine Learning order, especially:
 
 ```text
 Train/Test Split
         ↓
-Fit Preprocessing trên Train
+Fit Preprocessing on Train
         ↓
 Model Training
         ↓
 Evaluation
 ```
 
-nhằm hạn chế nguy cơ **data leakage**.
+to limit the risk of **data leakage**.
 
 ---
 
 ## Per-Section Notebook Generation
 
-Một trong những điểm chính của dự án là không generate toàn bộ notebook bằng một request duy nhất.
+One of the main points of the project is not to generate the entire notebook with a single request.
 
-Thay vào đó:
+Instead:
 
 ```text
 NotebookPlan
@@ -203,9 +203,9 @@ Merge
 notebook_cells
 ```
 
-Mỗi section được sinh độc lập bằng structured output.
+Each section is generated independently using structured output.
 
-Ví dụ một notebook cell:
+Example of a notebook cell:
 
 ```json
 {
@@ -214,7 +214,7 @@ Ví dụ một notebook cell:
   "cell_type": "code",
   "title": "Train/Test Split",
   "source": "X_train, X_test, y_train, y_test = ...",
-  "purpose": "Chia dữ liệu thành train và test",
+  "purpose": "Split data into train and test",
   "expected_output": null
 }
 ```
@@ -223,9 +223,9 @@ Ví dụ một notebook cell:
 
 ## Variable Contract
 
-Vì các section được generate bằng nhiều LLM call độc lập, dự án sử dụng một **Variable Contract** để giữ continuity giữa các section.
+Because the sections are generated by multiple independent LLM calls, the project uses a **Variable Contract** to maintain continuity between sections.
 
-Một số biến chuẩn:
+Some standard variables:
 
 ```python
 df
@@ -249,7 +249,7 @@ model_results = []
 RANDOM_STATE = 42
 ```
 
-Agent được yêu cầu không tự đổi các biến chuẩn sang những tên khác như:
+The agent is instructed not to rename the standard variables to other names such as:
 
 ```text
 train_X
@@ -258,15 +258,15 @@ housing_df
 X_train_data
 ```
 
-Điều này giúp giảm lỗi dependency giữa các section.
+This helps reduce dependency errors between sections.
 
 ---
 
 ## Structured Output
 
-Các output quan trọng của LLM được định nghĩa bằng **Pydantic models**.
+Important LLM outputs are defined using **Pydantic models**.
 
-Ví dụ:
+Example:
 
 ```python
 class NotebookCell(BaseModel):
@@ -279,26 +279,26 @@ class NotebookCell(BaseModel):
     expected_output: str | None
 ```
 
-Việc sử dụng structured output giúp kiểm soát format tốt hơn so với việc yêu cầu LLM trả về JSON tự do.
+Using structured output helps control format better than asking the LLM to return free-form JSON.
 
 ---
 
 ## Static Cell Validation
 
-Sau khi merge toàn bộ section, các cell được đưa vào validator.
+After merging all sections, the cells are passed to the validator.
 
-Validator hiện kiểm tra các lỗi như:
+The validator currently checks for errors such as:
 
-- thiếu `cell_id`;
+- missing `cell_id`;
 - duplicate `cell_id`;
 - sai `cell_type`;
-- source không phải string;
+- source is not a string;
 - Markdown code fence trong Python cell;
 - Python syntax error;
-- thiếu dataset path;
-- thiếu target đã xác nhận.
+- missing dataset path;
+- missing confirmed target.
 
-Ví dụ:
+Example:
 
 ```python
 compile(
@@ -308,15 +308,15 @@ compile(
 )
 ```
 
-được sử dụng để kiểm tra cú pháp Python mà chưa cần thực thi notebook.
+is used to check Python syntax without needing to execute the notebook.
 
 ---
 
-## Dependency Validation bằng AST
+## Dependency Validation with AST
 
-Syntax đúng không đồng nghĩa với notebook có thể chạy.
+Correct syntax does not mean the notebook can run.
 
-Ví dụ:
+Example:
 
 ```python
 model.fit(
@@ -325,11 +325,11 @@ model.fit(
 )
 ```
 
-vẫn compile thành công ngay cả khi `X_train_processed` chưa từng được tạo.
+still compiles successfully even though `X_train_processed` has never been created.
 
-Do đó dự án sử dụng `ast` của Python để phân tích code theo thứ tự notebook.
+Therefore, the project uses Python's `ast` to analyze code in notebook order.
 
-Dependency validator theo dõi:
+The dependency validator tracks:
 
 ```text
 defined variables
@@ -339,14 +339,14 @@ functions
 classes
 ```
 
-và phát hiện lỗi như:
+and detects errors such as:
 
 ```json
 {
   "cell_id": "section_6_code_2",
   "error_type": "undefined_variable",
   "variable": "X_train_processed",
-  "message": "Biến `X_train_processed` được sử dụng trước khi được định nghĩa hoặc import."
+  "message": "Variable `X_train_processed` is used before it is defined or imported."
 }
 ```
 
@@ -354,7 +354,7 @@ và phát hiện lỗi như:
 
 ## Automatic Cell Repair
 
-Khi validator phát hiện lỗi:
+When the validator detects an error:
 
 ```text
 validate_cells
@@ -366,32 +366,32 @@ fix_cells
 validate_cells
 ```
 
-`fix_cells` sửa từng cell thay vì regenerate toàn bộ notebook.
+`fix_cells` fixes each cell instead of regenerating the entire notebook.
 
-Hệ thống đang hỗ trợ repair các nhóm lỗi như:
+The system currently supports repairing error groups such as:
 
 ```text
 syntax_error
 undefined_variable
 ```
 
-Fixer có thể sử dụng:
+The fixer can use:
 
 - validation errors;
 - variable contract;
 - previous code context;
 - available variable names;
-- source của cell hiện tại.
+- source of the current cell.
 
-Mục tiêu là giữ thay đổi nhỏ nhất có thể và không tự tạo biến giả chỉ để làm validator hết lỗi.
+The goal is to keep changes as minimal as possible and not create dummy variables just to make the validator pass.
 
 ---
 
-## Retry và Rate Limit Handling
+## Retry and Rate Limit Handling
 
-Việc generate từng section tạo ra nhiều request nhỏ tới LLM.
+Generating each section creates many small requests to the LLM.
 
-Dự án có retry riêng cho từng section:
+The project has a dedicated retry for each section:
 
 ```text
 section_1 ✅
@@ -403,15 +403,15 @@ section_3 ❌
 section_3 ✅
 ```
 
-Đối với lỗi rate limit `429`, hệ thống sử dụng exponential backoff và có khoảng nghỉ giữa các section để giảm tần suất request.
+For the `429` rate-limit error, the system uses exponential backoff and has pauses between sections to reduce request frequency.
 
 ---
 
 ## LLM Provider
 
-Phiên bản hiện tại sử dụng model thông qua NVIDIA NIM với OpenAI-compatible API.
+The current version uses the model through NVIDIA NIM with an OpenAI-compatible API.
 
-Ví dụ cấu hình:
+Example configuration:
 
 ```python
 from langchain_openai import ChatOpenAI
@@ -424,19 +424,19 @@ llm = ChatOpenAI(
 )
 ```
 
-API key được lưu trong `.env`:
+The API key is stored in `.env`:
 
 ```env
 NVIDIA_API_KEY=your_api_key_here
 ```
 
-Không nên commit `.env` lên repository.
+Do not commit `.env` to the repository.
 
 ---
 
-## Công nghệ sử dụng
+## Technologies Used
 
-Các công nghệ chính:
+Main technologies:
 
 ```text
 Python
@@ -449,7 +449,7 @@ NVIDIA NIM
 MiniMax M3
 ```
 
-Các thư viện Machine Learning được notebook agent có thể sử dụng tùy theo dataset và notebook plan, ví dụ:
+The Machine Learning libraries that the notebook agent can use depending on the dataset and notebook plan, for example:
 
 ```text
 pandas
@@ -461,9 +461,9 @@ xgboost
 
 ---
 
-## Cấu trúc dự án
+## Project Structure
 
-Một cấu trúc thư mục tham khảo:
+A reference directory structure:
 
 ```text
 ml_notebook_agent/
@@ -511,13 +511,13 @@ ml_notebook_agent/
 └── README.md
 ```
 
-Cấu trúc thực tế có thể thay đổi trong quá trình phát triển.
+The actual structure may change during development.
 
 ---
 
-## State của LangGraph
+## LangGraph State
 
-Một phần state hiện tại:
+A part of the current state:
 
 ```python
 class State(TypedDict):
@@ -573,7 +573,7 @@ class State(TypedDict):
 
 ---
 
-## Cài đặt
+## Installation
 
 Clone repository:
 
@@ -582,7 +582,7 @@ git clone <repository-url>
 cd ml_notebook_agent
 ```
 
-Tạo virtual environment:
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -600,13 +600,13 @@ Linux/macOS:
 source .venv/bin/activate
 ```
 
-Cài dependency:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Tạo file `.env`:
+Create the `.env` file:
 
 ```env
 NVIDIA_API_KEY=your_api_key_here
@@ -614,29 +614,29 @@ NVIDIA_API_KEY=your_api_key_here
 
 ---
 
-## Chạy dự án
+## Running the Project
 
-Chạy:
+Run:
 
 ```bash
 python main.py
 ```
 
-Graph sẽ chạy cho tới bước Human Review. Sau khi người dùng xác nhận target và problem type, graph được resume và tiếp tục:
+The graph will run up to the Human Review step. After the user confirms the target and problem type, the graph is resumed and continues:
 
 ```text
 analyze_target
 → plan_notebook
 → generate_cells
 → validate_cells
-→ fix_cells nếu cần
+→ fix_cells if needed
 ```
 
 ---
 
-## Ví dụ kết quả
+## Example Result
 
-Một lần chạy thành công có thể trả về:
+A successful run may return:
 
 ```text
 Target              : median_house_value
@@ -650,36 +650,36 @@ Fix Attempts        : 0
 
 ---
 
-## Trạng thái phát triển
+## Development Status
 
-### Đã triển khai
+### Implemented
 
 - [x] Dataset inspection
-- [x] Dataset analysis bằng LLM
+- [x] Dataset analysis using LLM
 - [x] Problem proposal
-- [x] Target confirmation bằng Human-in-the-Loop
+- [x] Target confirmation with Human-in-the-Loop
 - [x] Target analysis
 - [x] Notebook planner
 - [x] Per-section notebook generation
 - [x] Structured output
 - [x] Generation routing
-- [x] Retry cho từng section
+- [x] Retry for each section
 - [x] Rate-limit backoff
 - [x] Variable contract
 - [x] Static syntax validation
 - [x] AST dependency validator
-- [x] Repair loop cơ bản
+- [x] Basic repair loop
 
-### Đang phát triển
+### In Development
 
-- [ ] Hoàn thiện dependency-aware cell repair
+- [ ] Finalize dependency-aware cell repair
 - [ ] Notebook Builder `.ipynb`
 - [ ] Notebook Executor
 - [ ] Runtime error detection
 - [ ] Runtime debugger / repair loop
 - [ ] Semantic Machine Learning validation
-- [ ] Kiểm tra data leakage nâng cao
-- [ ] RAG cho kiến thức Machine Learning
+- [ ] Advanced data leakage checks
+- [ ] RAG for Machine Learning knowledge
 - [ ] Multi-agent architecture
 
 ---
@@ -709,26 +709,26 @@ Execute Again
 ```
 
 
-## Nguyên tắc thiết kế
+## Design Principles
 
-**Human control** — AI đề xuất bài toán nhưng người dùng quyết định target cuối cùng.
+**Human control** — AI proposes the problem, but the user decides the final target.
 
-**Small LLM calls** — Sinh notebook theo từng section thay vì một request lớn.
+**Small LLM calls** — Generate the notebook section by section instead of one large request.
 
-**Structured output** — Dùng Pydantic để giới hạn output của LLM.
+**Structured output** — Use Pydantic to constrain the LLM's output.
 
-**Deterministic validation** — Các lỗi có thể kiểm tra bằng Python sẽ được kiểm tra bằng Python thay vì giao toàn bộ cho LLM.
+**Deterministic validation** — Errors that can be checked with Python are checked with Python instead of handing everything over to the LLM.
 
-**Repair instead of regenerate** — Khi một cell lỗi, ưu tiên sửa cell đó thay vì generate lại toàn bộ notebook.
+**Repair instead of regenerate** — When a cell fails, prioritize fixing that cell rather than regenerating the entire notebook.
 
-**Machine Learning safety** — Workflow cố gắng hạn chế data leakage, preprocessing sai thứ tự, target thay đổi ngoài ý muốn, fake metrics, undefined variables và code không nhất quán giữa các section.
+**Machine Learning safety** — The workflow attempts to mitigate data leakage, out-of-order preprocessing, unintended target changes, fake metrics, undefined variables, and inconsistent code between sections.
 
 
 ---
 
-## Tác giả
+## Author
 
-Dự án được xây dựng với mục tiêu nghiên cứu và thực hành các chủ đề:
+The project is built with the goal of researching and practicing the following topics:
 
 - AI Agent;
 - LangChain;

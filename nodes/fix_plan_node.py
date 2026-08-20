@@ -32,18 +32,18 @@ def fix_plan_node(state: State) -> dict:
         return {
             "plan_validation_status": "invalid",
             "fix_plan_attempts": attempts + 1,
-            "error": "Không có plan cũ để sửa.",
+            "error": "No old plan to fix.",
         }
 
     if not errors:
         return {
             "plan_validation_status": "invalid",
             "fix_plan_attempts": attempts + 1,
-            "error": "Không có lỗi plan để sửa.",
+            "error": "No plan errors to fix.",
         }
 
     prompt = f"""
-NOTEBOOK PLAN CŨ:
+OLD NOTEBOOK PLAN:
 
 {json.dumps(
     old_plan,
@@ -51,7 +51,7 @@ NOTEBOOK PLAN CŨ:
     indent=2,
 )}
 
-TOÀN BỘ LỖI VALIDATION:
+ALL VALIDATION ERRORS:
 
 {json.dumps(
     errors,
@@ -59,16 +59,16 @@ TOÀN BỘ LỖI VALIDATION:
     indent=2,
 )}
 
-Hãy sửa notebook plan dựa trên toàn bộ lỗi trên.
+Fix the notebook plan based on all the errors above.
 
-Quy tắc:
-- Giữ nguyên target_column.
-- Giữ nguyên problem_type.
-- Chỉ sửa phần gây lỗi.
-- Có từ 8 đến 10 sections.
-- section_id phải tuần tự.
-- Mỗi section có từ 1 đến 5 tasks.
-- Trả về toàn bộ plan sau khi sửa.
+Rules:
+- Keep target_column unchanged.
+- Keep problem_type unchanged.
+- Only fix the part causing errors.
+- Have 8 to 10 sections.
+- section_id must be sequential.
+- Each section must have 1 to 5 tasks.
+- Return the entire plan after fixing.
 """
 
     try:
@@ -76,7 +76,7 @@ Quy tắc:
             [
                 SystemMessage(
                     content=(
-                        "Bạn là agent sửa kế hoạch "
+                        "You are a plan-fixing agent "
                         "Machine Learning Notebook."
                     )
                 ),
@@ -92,7 +92,7 @@ Quy tắc:
             "error": None,
             "messages": [
                 AIMessage(
-                    content="Đã sửa notebook plan."
+                    content="Notebook plan has been fixed."
                 )
             ],
         }
@@ -101,10 +101,10 @@ Quy tắc:
         return {
             "plan_validation_status": "invalid",
             "fix_plan_attempts": attempts + 1,
-            "error": f"Không thể sửa plan: {exc}",
+            "error": f"Unable to fix plan: {exc}",
             "messages": [
                 AIMessage(
-                    content=f"Không thể sửa plan: {exc}"
+                    content=f"Unable to fix plan: {exc}"
                 )
             ],
         }

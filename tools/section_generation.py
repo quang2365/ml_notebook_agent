@@ -1,5 +1,3 @@
-"""Shared LLM utilities for generating one notebook section."""
-
 import json
 import time
 
@@ -17,212 +15,48 @@ section_llm = llm.with_structured_output(
 
 
 SECTION_SYSTEM_PROMPT = """
-Bạn là chuyên gia Python, Machine Learning
-và thiết kế Jupyter Notebook.
+You are an expert in Python, Machine Learning, and Jupyter Notebook design.
 
-Nhiệm vụ của bạn là sinh các notebook cell
-CHO DUY NHẤT MỘT SECTION được cung cấp.
+Your task is to generate notebook cells for ONLY ONE PROVIDED SECTION.
 
-QUY TẮC BẮT BUỘC:
-
-1. Chỉ sinh cell thuộc section hiện tại.
-2. Không sinh nội dung của section khác.
-3. Mỗi section nên có từ 2 đến 5 cell.
-4. Nên có ít nhất một Markdown cell mô tả section.
-5. Python code phải hợp lệ và có thể chạy tuần tự.
-6. Không đặt Python code trong Markdown code fence.
-7. Không sử dụng biến chưa được khai báo ở các bước trước.
-8. Không thay đổi dataset path.
-9. Không thay đổi target column.
-10. Không thực thi code.
-11. Không tạo output hoặc metric giả.
-12. Dùng random_state=42 khi phù hợp.
-13. Tránh data leakage.
-14. Preprocessing phải fit trên train set khi phù hợp.
-15. section_id của mọi cell phải đúng với section_id được cung cấp.
-16. cell_id phải duy nhất và nên bắt đầu bằng section_id.
-17. Phải tuân thủ tuyệt đối VARIABLE CONTRACT được cung cấp.
-18. Không tự tạo tên thay thế cho các biến chuẩn
-    nếu contract đã quy định tên biến.
-19. Chỉ sử dụng biến được tạo ở section hiện tại
-    hoặc các section đứng trước.
-20. Không giả định tồn tại biến chưa được tạo.
-21. Các model nên sử dụng sklearn Pipeline chứa
-    preprocessor khi phù hợp để tránh data leakage.
-22. Không fit preprocessor riêng trên test set.
-23. Không fit preprocessing có học tham số trên
-    toàn bộ dataset trước train/test split.
-24. PREVIOUS NOTEBOOK CODE chứa code thật đã được sinh ở các section trước.
-25. Phải tái sử dụng chính xác tên biến, kiểu dữ liệu, tên Pipeline step
-    và cấu trúc đã tồn tại trong PREVIOUS NOTEBOOK CODE.
-26. Không được định nghĩa lại biến cũ với ý nghĩa khác.
-27. Nếu section trước tạo biến dữ liệu mới như X_train_fe/X_test_fe,
-    mọi model phụ thuộc các feature đó phải fit/predict bằng đúng biến mới.
-28. Tên step dùng với named_steps phải trùng tên step lúc tạo Pipeline.
-29. Các key trong model_results phải nhất quán: model, mae, rmse, r2.
-30. Trước khi trả kết quả, kiểm tra mọi biến được sử dụng đã được tạo
-    trong PREVIOUS NOTEBOOK CODE hoặc section hiện tại.
-31. Luôn sử dụng chính xác DATASET PATH được cung cấp; không tự thêm
-    hoặc bỏ ../ hay ./.
-32. model_results luôn là list[dict] và chỉ được khởi tạo đúng một lần.
-33. Mỗi model phải append metric vào model_results ngay sau khi đánh giá;
-    không chờ section so sánh mới tái dựng metric từ biến có thể bị ghi đè.
-34. Không được đổi kiểu dữ liệu của model_results, trained_models,
-    predictions hoặc các biến trong VARIABLE CONTRACT.
-35. Mọi Pipeline dùng tên step chuẩn: preprocessor và model.
-36. Key model phải giống nhau trong trained_models, predictions và
-    trường model của model_results.
-37. Section so sánh chỉ đọc model_results; không được gán lại biến này.
-38. RMSE phải dùng np.sqrt(mean_squared_error(...)) để tương thích
-    nhiều phiên bản scikit-learn.
+MANDATORY RULES:
+1. Generate only cells belonging to the current section.
+2. Do not generate content for other sections.
+3. Each section should contain 2 to 5 cells.
+4. Include at least one Markdown cells describing the section.
+5. Python code must be valid and executable sequentially.
+6. Do not put Python code inside a Markdown code fence.
+7. Do not use variables that were not declared in previous steps.
+8. Do not change the dataset path or target column.
+9. Do not execute code or create fake outputs or metrics.
+10. Use random_state=42 when appropriate and avoid data leakage.
+11. Fit preprocessing on the train set when appropriate.
+12. The section_id of every cell must match the provided section_id, and cell_id must be unique and start with section_id.
+13. Strictly follow the provided VARIABLE CONTRACT.
+14. Reuse exactly the variable names, data types, Pipeline step names, and structures in PREVIOUS NOTEBOOK CODE.
+15. Do not redefine an existing variable with a different meaning.
+16. Use only variables created in the current or previous sections.
+17. Every Pipeline must use the standard step names preprocessor and model.
+18. Keys in model_results must remain consistent: model, mae, rmse, r2.
+19. model_results must always be list[dict] and initialized exactly once.
+20. Each model must append metrics immediately after evaluation.
+21. The model key must be identical in trained_models, predictions, and model_results.
+22. The comparison section only reads model_results and must not reassign it.
+23. RMSE must use np.sqrt(mean_squared_error(...)).
 """
-
-
 NOTEBOOK_VARIABLE_CONTRACT = """
-VARIABLE CONTRACT CHUNG CHO TOÀN NOTEBOOK:
+COMMON VARIABLE CONTRACT FOR THE ENTIRE NOTEBOOK:
 
-Các section phải sử dụng nhất quán các biến sau.
-
-1. Dataset:
-
-df
-- DataFrame gốc được đọc từ dataset_path.
-- Không đổi tên thành data, dataset hoặc housing_df.
-
-target_column
-- Tên cột target đã được người dùng xác nhận.
-
-2. Features và target:
-
-X
-- Toàn bộ features trước train/test split.
-
-y
-- Target.
-
-3. Train/test split:
-
-X_train
-X_test
-y_train
-y_test
-
-Không tự tạo các tên thay thế như:
-X_train_data
-train_X
-features_train
-y_training
-
-4. Preprocessing:
-
-preprocessor
-- Đối tượng preprocessing chính.
-- Có thể là ColumnTransformer hoặc Pipeline.
-
-Không fit preprocessor trên toàn bộ X trước train/test split.
-
-Ưu tiên đưa preprocessor trực tiếp vào
-sklearn Pipeline cùng model thay vì tạo các biến:
-
-X_train_processed
-X_test_processed
-X_train_scaled
-X_test_scaled
-
-trừ khi section plan thực sự yêu cầu.
-
-5. Quản lý model:
-
-trained_models = {}
-predictions = {}
-model_results = []
-
-Mỗi model sau khi train phải được lưu vào:
-
-trained_models["model_name"]
-
-Prediction tương ứng:
-
-predictions["model_name"]
-
-Metric của model phải được thêm vào:
-
-model_results.append({
-    "model": model_name,
-    "mae": mae,
-    "rmse": rmse,
-    "r2": r2,
-})
-
-Quy tắc bắt buộc:
-
-- model_results luôn là list[dict].
-- Chỉ khởi tạo model_results = [] đúng một lần.
-- Không được gán lại model_results thành dict hoặc DataFrame.
-- Mỗi model phải append kết quả ngay trong section đánh giá model đó,
-  trước khi section tiếp theo có thể ghi đè các biến metric tạm thời.
-- Section so sánh phải tạo bảng bằng:
-
-model_comparison = pd.DataFrame(model_results).set_index("model")
-
-- Section so sánh không được tái dựng model_results từ mae_test,
-  rmse_test hoặc r2_test của section cuối.
-- Cùng một model_name phải được dùng làm key trong trained_models,
-  predictions và trường model trong model_results.
-
-6. Pipeline contract:
-
-Mọi sklearn Pipeline phải ưu tiên hai step chuẩn:
-
-Pipeline([
-    ("preprocessor", preprocessor),
-    ("model", estimator),
-])
-
-Khi truy cập estimator phải dùng:
-
-pipeline.named_steps["model"]
-
-Không trộn các tên step model, regressor, estimator cho cùng vai trò.
-
-7. Feature engineering contract:
-
-Nếu tạo X_train_fe và X_test_fe thì mọi pipeline cần engineered feature
-phải fit/predict bằng đúng X_train_fe và X_test_fe.
-
-Nếu feature engineering nằm bên trong Pipeline thì tiếp tục sử dụng
-X_train và X_test. Chỉ chọn một chiến lược nhất quán cho toàn notebook.
-
-8. Metric compatibility:
-
-RMSE phải được tính bằng:
-
-rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-
-Không dùng squared=False vì không tương thích mọi phiên bản sklearn.
-
-9. Random state:
-
-RANDOM_STATE = 42
-
-Mọi model hoặc train/test split hỗ trợ random_state
-phải sử dụng RANDOM_STATE.
-
-10. Một section không được sử dụng biến của
-section sau nó.
-
-11. Không tự đổi tên hoặc đổi kiểu dữ liệu các biến đã quy định ở trên.
-
-12. Dataset path:
-
-Luôn đọc dữ liệu bằng chính dataset_path được cung cấp:
-
-df = pd.read_csv(dataset_path)
-
-Không tạo DATASET_PATH thứ hai và không tự thay ./ thành ../.
+Use df, target_column, X, y, X_train, X_test, y_train, y_test, preprocessor, trained_models = {}, predictions = {}, and model_results = [] consistently across all sections.
+model_results must always be list[dict].
+Build comparison tables with pd.DataFrame(model_results).set_index("model") when needed.
+Do not reassign model_results to a dict.
+Do not rename standard variables or change their data types.
+Use Pipeline([("preprocessor", preprocessor), ("model", estimator)]) and access the estimator with pipeline.named_steps["model"].
+Use RANDOM_STATE = 42 where supported. Use rmse = np.sqrt(mean_squared_error(y_true, y_pred)).
+Do not use variables from later sections.
+Always read data with df = pd.read_csv(dataset_path), using the exact provided dataset_path.
 """
-
-
 MAX_SECTION_RETRIES = 3
 RATE_LIMIT_BASE_DELAY = 15
 NORMAL_RETRY_DELAY = 3
@@ -253,7 +87,7 @@ def generate_one_section(
 ) -> dict:
     """Generate and validate one section, retrying transient failures."""
     user_prompt = f"""
-Hãy tạo các notebook cell cho section sau.
+Create notebook cells for the following section.
 
 SECTION ID:
 {section_id}
@@ -294,14 +128,14 @@ VARIABLE CONTRACT:
 
             if returned_section_id != section_id:
                 raise ValueError(
-                    "LLM trả sai section_id: "
+                    "LLM returned the wrong section_id: "
                     f"{returned_section_id}. Expected: {section_id}"
                 )
 
             cells = generated_dict.get("cells") or []
             if not cells:
                 raise ValueError(
-                    f"LLM không tạo cell nào cho section `{section_id}`."
+                    f"LLM generated no cells for section `{section_id}`."
                 )
 
             seen_cell_ids: set[str] = set()
@@ -311,18 +145,18 @@ VARIABLE CONTRACT:
 
                 if not cell_id:
                     raise ValueError(
-                        f"Section `{section_id}` có cell không có cell_id."
+                        f"Section `{section_id}` has a cell without cell_id."
                     )
 
                 if cell_section_id != section_id:
                     raise ValueError(
-                        f"Cell `{cell_id}` có section_id "
-                        f"`{cell_section_id}` nhưng expected là `{section_id}`."
+                        f"Cell `{cell_id}` has section_id "
+                        f"`{cell_section_id}` but expected is `{section_id}`."
                     )
 
                 if cell_id in seen_cell_ids:
                     raise ValueError(
-                        f"cell_id `{cell_id}` bị trùng trong "
+                        f"cell_id `{cell_id}` is duplicated in "
                         f"section `{section_id}`."
                     )
 
@@ -348,7 +182,7 @@ VARIABLE CONTRACT:
                     wait_time = RATE_LIMIT_BASE_DELAY * (2 ** (attempt - 1))
                     print(
                         f"[{section_id}] NVIDIA rate limit. "
-                        f"Chờ {wait_time}s..."
+                        f"Waiting {wait_time}s..."
                     )
                     time.sleep(wait_time)
                 else:

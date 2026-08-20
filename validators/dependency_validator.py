@@ -10,17 +10,10 @@ BUILTIN_NAMES = set(
 def validate_dependencies(
     cells: list[dict],
 ) -> list[dict]:
-    """
-    Kiểm tra code cell theo đúng thứ tự notebook.
-
-    Phát hiện biến được sử dụng trước
-    khi được định nghĩa/import.
-    """
-
     errors: list[dict] = []
 
-    # Những name đã tồn tại từ
-    # các cell trước
+    # Names already defined by
+    # previous cells
     defined_names: set[str] = set(
         BUILTIN_NAMES
     )
@@ -49,18 +42,11 @@ def validate_dependencies(
             )
 
         except SyntaxError:
-            # Syntax validator đã xử lý.
-            # Không phân tích dependency
-            # trên AST lỗi.
             continue
 
         analyzer = CellDependencyAnalyzer()
 
         analyzer.visit(tree)
-
-        # ==========================
-        # 1. NAME ĐƯỢC SỬ DỤNG
-        # ==========================
 
         available_names = (
             defined_names
@@ -90,17 +76,13 @@ def validate_dependencies(
                         name,
 
                     "message": (
-                        f"Biến `{name}` "
-                        "được sử dụng trước "
-                        "khi được định nghĩa "
-                        "hoặc import."
+                        f"Variable `{name}` "
+                        "is used before "
+                        "being defined "
+                        "or imported."
                     ),
                 }
             )
-
-        # ==========================
-        # 2. CẬP NHẬT CONTEXT
-        # ==========================
 
         defined_names.update(
             analyzer.defined_names
@@ -112,21 +94,10 @@ def validate_dependencies(
 class CellDependencyAnalyzer(
     ast.NodeVisitor
 ):
-    """
-    Thu thập name được định nghĩa và
-    name được sử dụng trong một code cell.
-
-    Đây là validator continuity cấp notebook,
-    không phải static analyzer Python hoàn chỉnh.
-    """
 
     def __init__(self) -> None:
         self.defined_names: set[str] = set()
         self.used_names: set[str] = set()
-
-    # ==============================
-    # NAME
-    # ==============================
 
     def visit_Name(
         self,
@@ -148,10 +119,6 @@ class CellDependencyAnalyzer(
             self.used_names.add(
                 node.id
             )
-
-    # ==============================
-    # IMPORT
-    # ==============================
 
     def visit_Import(
         self,
@@ -188,28 +155,14 @@ class CellDependencyAnalyzer(
                 name
             )
 
-    # ==============================
-    # FUNCTION
-    # ==============================
 
     def visit_FunctionDef(
         self,
         node: ast.FunctionDef,
     ) -> None:
-        """
-        Function name tồn tại sau cell.
-
-        Không đi sâu vào function body
-        ở validator continuity version 1,
-        vì biến bên trong function có scope riêng.
-        """
-
         self.defined_names.add(
             node.name
         )
-
-        # Default arguments có thể dùng
-        # biến global.
         for default in node.args.defaults:
             self.visit(default)
 
@@ -230,10 +183,6 @@ class CellDependencyAnalyzer(
     ) -> None:
 
         self.visit_FunctionDef(node)
-
-    # ==============================
-    # CLASS
-    # ==============================
 
     def visit_ClassDef(
         self,
@@ -256,10 +205,6 @@ class CellDependencyAnalyzer(
             node.decorator_list
         ):
             self.visit(decorator)
-
-    # ==============================
-    # EXCEPTION
-    # ==============================
 
     def visit_ExceptHandler(
         self,

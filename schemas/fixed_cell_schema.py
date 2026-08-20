@@ -3,18 +3,18 @@ from pydantic import BaseModel, Field
 
 class FixedCell(BaseModel):
     cell_id: str = Field(description=(
-            "ID của cell đang được sửa. "
-            "Không được thay đổi ID."
+            "ID of the cell being fixed. "
+            "Do not change the ID."
         )
     )
 
     source: str = Field(description=(
-            "Toàn bộ Python source code "
-            "sau khi đã sửa."
+            "All Python source code "
+            "after it has been fixed."
         )
     )
 
     changes: str = Field(description=(
-            "Mô tả ngắn lỗi đã được sửa."
+            "Brief description of the fixed error."
         )
     )

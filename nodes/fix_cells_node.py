@@ -28,12 +28,12 @@ fix_llm = llm.with_structured_output(
 
 
 SYSTEM_PROMPT = """
-Bạn là chuyên gia Python và Machine Learning.
+You are a Python and Machine Learning expert.
 
-Nhiệm vụ của bạn là sửa MỘT notebook code cell dựa trên lỗi
-được cung cấp và ngữ cảnh của các code cell đứng trước nó.
+Your task is to fix ONE notebook code cell based on the error
+provided and the context of the code cells preceding it.
 
-CÁC LOẠI LỖI CÓ THỂ NHẬN:
+POSSIBLE ERROR TYPES:
 
 1. syntax_error
 2. undefined_variable
@@ -49,58 +49,58 @@ CÁC LOẠI LỖI CÓ THỂ NHẬN:
 12. wrong_target
 13. other
 
-QUY TẮC BẮT BUỘC:
+MANDATORY RULES:
 
-1. Chỉ sửa CURRENT CELL và chỉ sửa những vấn đề liên quan
-   trực tiếp đến VALIDATION ERRORS được cung cấp.
+1. Only modify the CURRENT CELL and only fix issues related
+   directly to the provided VALIDATION ERRORS.
 
-2. Không viết lại toàn bộ notebook, không sửa các cell đứng
-   trước hoặc giả định rằng các cell đứng sau đã được chạy.
+2. Do not rewrite the entire notebook, do not modify preceding cells
+   or assume that the following cells have already run.
 
-3. Không thay đổi target column.
+3. Do not change the target column.
 
-4. Không thay đổi dataset path.
+4. Do not change the dataset path.
 
-5. Không tạo metric hoặc kết quả giả.
+5. Do not create fake metrics or results.
 
-6. Không tạo biến tùy tiện chỉ để làm lỗi biến mất.
+6. Do not create arbitrary variables just to make the error disappear.
 
-7. Với syntax_error:
+7. For syntax_error:
 
-   - Sửa cú pháp bằng thay đổi nhỏ nhất có thể.
-   - Không thay đổi mục đích Machine Learning của cell.
+   - Fix the syntax with the smallest possible change.
+   - Do not change the Machine Learning purpose of the cell.
 
-8. Với undefined_variable hoặc inconsistent_variable:
+8. For undefined_variable or inconsistent_variable:
 
-   - Kiểm tra AVAILABLE NAMES.
-   - Kiểm tra PREVIOUS CODE CONTEXT.
-   - Nếu biến lỗi chỉ là tên không nhất quán,
-     ưu tiên sử dụng biến đã tồn tại.
-   - Nếu thực sự cần định nghĩa biến mới,
-     chỉ tạo khi logic Machine Learning yêu cầu.
+   - Check AVAILABLE NAMES.
+   - Check PREVIOUS CODE CONTEXT.
+   - If the erroneous variable is only an inconsistent name,
+     prefer using an existing variable.
+   - If you truly need to define a new variable,
+     only create it when the Machine Learning logic requires it.
 
-   - Không được tạo biến bằng None hoặc giá trị giả chỉ để
-     validator không còn báo lỗi.
+   - Do not create a variable with None or a dummy value just to
+     stop the validator from reporting the error.
 
-9. Với data_leakage:
+9. For data_leakage:
 
-   - Chỉ fit preprocessor, feature selector và model trên
+   - Only fit the preprocessor, feature selector, and the model above
      training data.
-   - Không dùng test data để fit, chọn feature, tuning hoặc
-     lựa chọn model.
-   - Không đưa target column vào tập features.
-   - Test data chỉ được transform và predict bằng object đã
-     fit trên training data.
+   - Do not use test data to fit, select features, tune, or
+     select models.
+   - Do not include the target column in the feature set.
+   - Test data may only be transformed and predicted using objects already
+     fitted on training data.
 
-10. Với pipeline_incompatibility, invalid_preprocessing hoặc
+10. For pipeline_incompatibility, invalid_preprocessing or
     invalid_feature_engineering:
 
-    - Theo dõi kiểu dữ liệu đi qua từng bước của pipeline.
-    - SimpleImputer, StandardScaler và ColumnTransformer có
-      thể trả về NumPy array.
-    - Nếu FunctionTransformer truy cập X["column"], nó phải
-      chạy khi X vẫn là pandas DataFrame.
-    - Ưu tiên đặt feature engineering dùng tên cột trước
+    - Track the data type through each step of the pipeline.
+    - SimpleImputer, StandardScaler, and ColumnTransformer can
+      return a NumPy array.
+    - If FunctionTransformer accesses X["column"], it must
+      run while X is still a pandas DataFrame.
+    - Prefer to put feature engineering that uses column names first
       ColumnTransformer:
 
       Pipeline([
@@ -108,66 +108,66 @@ QUY TẮC BẮT BUỘC:
           ("columns", ColumnTransformer(...)),
       ])
 
-    - Không đặt FunctionTransformer dùng tên cột sau bước đã
-      chuyển DataFrame thành NumPy array, trừ khi đầu ra pandas
-      được bảo đảm rõ ràng.
-    - Train và test phải dùng cùng một fitted preprocessor.
-    - Không gọi fit_transform trên test data.
+    - Do not place a column-name-based FunctionTransformer after a step that has
+      converted the DataFrame to a NumPy array, unless the pandas output
+      is clearly guaranteed.
+    - Train and test must use the same fitted preprocessor.
+    - Do not call fit_transform on test data.
 
-11. Với invalid_model_flow:
+11. For invalid_model_flow:
 
-    - Model phải được fit trước khi predict.
-    - Mỗi model phải sử dụng đúng preprocessing và đúng dữ
-      liệu train/test.
-    - Tên model phải nhất quán giữa trained_models,
-      predictions và model_results.
-    - Không thay một model bằng model khác nếu lỗi không yêu
-      cầu việc đó.
+    - The model must be fitted before predicting.
+    - Each model must use the correct preprocessing and the correct
+      train/test data.
+    - Model names must be consistent across trained_models,
+      predictions, and model_results.
+    - Do not replace one model with another if the error does not require
+      it.
 
-12. Với invalid_metric hoặc invalid_evaluation:
+12. For invalid_metric or invalid_evaluation:
 
-    - Sử dụng metric phù hợp với PROBLEM TYPE.
-    - Regression có thể dùng MAE, RMSE, R2 và MAPE khi hợp lệ.
-    - Classification có thể dùng accuracy, precision, recall,
-      F1, ROC-AUC hoặc metric phù hợp với dữ liệu.
-    - RMSE phải được tính đúng theo phiên bản thư viện hiện có,
-      ví dụ np.sqrt(mean_squared_error(y_true, y_pred)).
-    - Mỗi model phải lưu metric riêng ngay sau khi đánh giá.
-    - Không tái sử dụng metric của model cuối cho các model khác.
-    - Không tạo metric, prediction hoặc model_results giả.
+    - Use a metric appropriate for the PROBLEM TYPE.
+    - Regression may use MAE, RMSE, R2, and MAPE when valid.
+    - Classification may use accuracy, precision, recall,
+      F1, ROC-AUC, or a metric appropriate for the data.
+    - RMSE must be calculated correctly according to the current library version,
+      e.g., np.sqrt(mean_squared_error(y_true, y_pred)).
+    - Each model must store its own metric immediately after evaluation.
+    - Do not reuse the last model's metric for other models.
+    - Do not create fake metrics, predictions, or model_results.
 
-13. Với wrong_problem_type hoặc wrong_target:
+13. For wrong_problem_type or wrong_target:
 
-    - Tuân thủ chính xác TARGET COLUMN và PROBLEM TYPE trong
+    - Strictly follow the TARGET COLUMN and PROBLEM TYPE in
       context.
-    - Không tự ý đổi target hoặc loại bài toán.
-    - Nếu CURRENT CELL dùng nhầm target, sửa về target đã được
-      xác nhận bằng những biến thực sự có trong context.
+    - Do not arbitrarily change the target or problem type.
+    - If CURRENT CELL uses the wrong target, change it to the target that has been
+      confirmed by variables that actually exist in the context.
 
-14. Đọc trường suggestion trong lỗi như một gợi ý, không coi
-    đó là mệnh lệnh tuyệt đối. Chỉ áp dụng nếu phù hợp với code
-    và PREVIOUS CODE CELLS.
+14. Read the suggestion field in the error as a suggestion; do not treat
+    it as an absolute command. Apply it only if it fits the code
+    and PREVIOUS CODE CELLS.
 
-15. Phải giữ nhất quán với các object đã được tạo trong
-    PREVIOUS CODE CELLS. Không được tham chiếu cell đứng sau
+15. Must stay consistent with the objects created in
+    PREVIOUS CODE CELLS. Do not reference later cells.
     CURRENT CELL.
 
-16. Nếu giá trị cần lấy từ dictionary, phải sử dụng đúng key
-    đã được tạo trước đó.
+16. If a value needs to be retrieved from a dictionary, use the exact key
+    that was created earlier.
 
-17. Preprocessing có học tham số chỉ được fit trên training
-    data. Không tạo data leakage dưới bất kỳ hình thức nào.
+17. Preprocessing that learns parameters may only be fitted on training
+    data. Do not create data leakage in any form.
 
-18. Giữ thay đổi nhỏ nhất có thể và bảo toàn mục đích ban đầu
-    của CURRENT CELL.
+18. Keep the change as minimal as possible and preserve the original purpose
+    of the CURRENT CELL.
 
-19. Source trả về phải là Python thuần, không dùng Markdown
-    code fence và phải giữ nguyên cell_id.
+19. The returned Source must be pure Python, not using Markdown
+    code fence, and must preserve the cell_id.
 
-20. Nếu lỗi không thể sửa chỉ bằng CURRENT CELL mà bắt buộc
-    phải thay đổi một cell trước đó, không được bịa biến hoặc
-    kết quả để che lỗi. Hãy giữ code hợp lý nhất có thể; hệ
-    thống sẽ phát hiện nếu bản sửa không giải quyết được lỗi.
+20. If the error cannot be fixed using only the CURRENT CELL and it is mandatory
+    to change a previous cell, do not invent variables or
+    results to hide the error. Keep the code as reasonable as possible; the system
+    will detect if the fix does not resolve the error.
 """
 
 def fix_cells_node(
@@ -187,7 +187,7 @@ def fix_cells_node(
 
     if not cells:
         message = (
-            "Không có notebook_cells để sửa."
+            "No notebook_cells to fix."
         )
 
         return {
@@ -200,7 +200,7 @@ def fix_cells_node(
 
     if not validation_cell_errors:
         message = (
-            "Không có validation_cell_errors để sửa."
+            "No validation_cell_errors to fix."
         )
         new_fix_attempts = fix_cell_attempts + 1
         return {
@@ -215,7 +215,7 @@ def fix_cells_node(
             ],
         }
 
-    # Không mutate trực tiếp state cũ
+    # Do not directly mutate old state
     updated_cells = deepcopy(cells)
 
     # cell_id -> cell
@@ -225,7 +225,7 @@ def fix_cells_node(
         if cell.get("cell_id")
     }
 
-    # Gom lỗi theo cell_id
+    # Group errors by cell_id
     errors_by_cell = group_errors_by_cell(
         validation_cell_errors
     )
@@ -264,7 +264,7 @@ def fix_cells_node(
             failed_cell_ids.append(cell_id)
             continue
 
-        # Markdown không cần sửa
+        # Markdown does not need fixing
         if cell.get("cell_type") != "code":
             continue
 
@@ -282,7 +282,7 @@ def fix_cells_node(
                 problem_type=state.get("problem_type"),
             )
 
-            # Kiểm tra syntax ngay sau khi LLM sửa
+            # Check syntax immediately after the LLM fixes it
             compile(
                 fixed_source,
                 filename=cell_id,
@@ -290,7 +290,7 @@ def fix_cells_node(
             )
 
 
-            # Thay source trên một bản sao và validate dependency toàn notebook.
+            # Replace source on a copy and validate dependency for the whole notebook.
             candidate_cells = deepcopy(updated_cells)
             candidate_cells[cell_index]["source"] = fixed_source
             remaining_errors = validate_dependencies(candidate_cells)
@@ -302,7 +302,7 @@ def fix_cells_node(
 
             if remaining_cell_errors:
                 raise ValueError(
-                    "Bản sửa vẫn còn lỗi dependency: "
+                    "The dependency error remains after the fix: "
                     f"{remaining_cell_errors}"
                 )
 
@@ -340,7 +340,7 @@ def fix_cells_node(
     return {
         "notebook_cells": updated_cells,
 
-        # Validator tiếp theo sẽ xác định lại
+        # The next validator will re-validate
         "validation_cell_status": "pending",
         "validation_cell_errors": None,
 
@@ -351,8 +351,8 @@ def fix_cells_node(
             None
             if not failed_cell_ids
             else (
-                "Một số cell chưa sửa "
-                "thành công."
+                "Some cells were not fixed "
+                "successfully."
             )
         ),
 
@@ -422,18 +422,18 @@ def fix_single_cell(
             VALIDATION ERRORS:
             {error_text}
 
-            NHIỆM VỤ:
+            TASK:
 
-            1. Chỉ sửa CURRENT CELL.
-            2. Không tạo lại toàn bộ notebook.
-            3. Chỉ sử dụng biến có trong AVAILABLE NAMES
-            hoặc biến được định nghĩa trong CURRENT CELL.
-            4. Nếu một tên biến không tồn tại, tìm biến có vai trò
-            tương ứng trong PREVIOUS CODE CELLS.
-            5. Không tự tạo biến giả chỉ để validator cho qua.
-            6. Giữ nguyên cell_id.
-            7. Source trả về phải là Python thuần.
-            8. Không dùng Markdown code fence.
+            1. Only modify the CURRENT CELL.
+            2. Do not recreate the entire notebook.
+            3. Only use variables present in AVAILABLE NAMES
+            or variables defined in the CURRENT CELL.
+            4. If a variable name does not exist, find a variable with a role
+            corresponding to it in PREVIOUS CODE CELLS.
+            5. Do not create fake variables just to make the validator pass.
+            6. Preserve the cell_id.
+            7. The returned Source must be pure Python.
+            8. Do not use Markdown code fence.
             """
 
         result = fix_llm.invoke(
@@ -451,13 +451,13 @@ def fix_single_cell(
             result.model_dump()
         )
 
-        # LLM không được thay ID
+        # LLM must not change the ID
         if (
             result_dict["cell_id"]
             != cell_id
         ):
             raise ValueError(
-                "LLM thay đổi cell_id: "
+                "LLM changed cell_id: "
                 f"{cell_id} -> "
                 f"{result_dict['cell_id']}"
             )
@@ -466,7 +466,7 @@ def fix_single_cell(
             result_dict["source"]
         )
 
-        # Không chấp nhận Markdown fence
+        # Do not accept Markdown fence
         candidate_source = (
             remove_code_fence(
                 candidate_source
@@ -484,8 +484,8 @@ def fix_single_cell(
 
         except SyntaxError as exc:
             last_syntax_error = exc
-            # Lần retry kế tiếp sẽ dùng
-            # chính lỗi mới này
+            # The next retry will use
+            # this exact new error
             current_source = (
                 candidate_source
             )
@@ -506,8 +506,8 @@ def fix_single_cell(
 
     if last_syntax_error:
         raise RuntimeError(
-            f"Cell `{cell_id}` vẫn lỗi sau "
-            f"{MAX_CELL_FIX_RETRIES} lần. "
+            f"Cell `{cell_id}` still fails after "
+            f"{MAX_CELL_FIX_RETRIES} times. "
             f"Line {last_syntax_error.lineno}: "
             f"{last_syntax_error.msg}. "
             f"Code: "
@@ -515,7 +515,7 @@ def fix_single_cell(
         )
 
     raise RuntimeError(
-        f"Không thể sửa cell `{cell_id}`."
+        f"Could not fix cell `{cell_id}`."
     )
 def format_errors(
     errors: list[dict],
@@ -593,11 +593,11 @@ def build_fix_message(
         f"**Fix round:** {fix_attempt}",
         "",
         (
-            f"**Sửa thành công:** "
+            f"**Fixed successfully:** "
             f"{len(fixed_cell_ids)} cell"
         ),
         (
-            f"**Chưa sửa được:** "
+            f"**Not fixed:** "
             f"{len(failed_cell_ids)} cell"
         ),
     ]
@@ -606,7 +606,7 @@ def build_fix_message(
         lines.extend(
             [
                 "",
-                "## Cells đã sửa",
+                "## Fixed cells",
             ]
         )
 
@@ -619,7 +619,7 @@ def build_fix_message(
         lines.extend(
             [
                 "",
-                "## Cells chưa sửa được",
+                "## Unfixed cells",
             ]
         )
 
@@ -632,7 +632,7 @@ def build_fix_message(
         [
             "",
             (
-                "Các cell sẽ được đưa trở lại "
+                "The cells will be put back "
                 "`validate_cells`."
             ),
         ]
@@ -663,7 +663,7 @@ def collect_available_names(
             analyzer.defined_names
         )
 
-    # Không cần gửi toàn bộ builtin cho LLM.
+    # No need to send all builtins to the LLM.
     return sorted(
         name
         for name in available_names

@@ -1,5 +1,3 @@
-"""Offline tests for conversion and notebook file creation."""
-
 from __future__ import annotations
 
 import json

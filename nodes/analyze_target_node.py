@@ -27,7 +27,7 @@ def analyze_target_node(state: State) -> dict:
 
         if not target_analysis:
             raise ValueError(
-                "Tool không trả về target_analysis."
+                "The tool did not return target_analysis."
             )
 
         unique_count = target_analysis.get(
@@ -39,16 +39,16 @@ def analyze_target_node(state: State) -> dict:
         )
 
         message_lines = [
-            "## Phân tích target đã xác nhận",
+            "## Confirmed target analysis",
             "",
             f"- **Target:** `{target_column}`",
-            f"- **Loại bài toán:** `{problem_type}`",
+            f"- **Problem type:** `{problem_type}`",
             (
-                "- **Số giá trị khác nhau:** "
+                "- **Number of distinct values:** "
                 f"{unique_count:,}"
             ),
             (
-                "- **Số giá trị thiếu:** "
+                "- **Number of missing values:** "
                 f"{missing_count:,}"
             ),
         ]
@@ -62,18 +62,18 @@ def analyze_target_node(state: State) -> dict:
             message_lines.extend(
                 [
                     "",
-                    "### Phân phối target",
+                    "### Target distribution",
                     "",
                     (
-                        "- **Trung bình:** "
+                        "- **Mean:** "
                         f"{distribution.get('mean')}"
                     ),
                     (
-                        "- **Trung vị:** "
+                        "- **Median:** "
                         f"{distribution.get('median')}"
                     ),
                     (
-                        "- **Độ lệch chuẩn:** "
+                        "- **Standard deviation:** "
                         f"{distribution.get('std')}"
                     ),
                     (
@@ -100,14 +100,14 @@ def analyze_target_node(state: State) -> dict:
             message_lines.extend(
                 [
                     "",
-                    "### Phân bố lớp",
+                    "### Class distribution",
                     "",
                     (
-                        "- **Số lớp:** "
+                        "- **Number of classes:** "
                         f"{unique_count}"
                     ),
                     (
-                        "- **Tỷ lệ mất cân bằng:** "
+                        "- **Imbalance ratio:** "
                         f"{imbalance_ratio}"
                     ),
                 ]
@@ -120,7 +120,7 @@ def analyze_target_node(state: State) -> dict:
 
                 message_lines.append(
                     f"- `{class_name}`: "
-                    f"{count:,} mẫu "
+                    f"{count:,} samples "
                     f"({percentage}%)"
                 )
 
@@ -128,8 +128,8 @@ def analyze_target_node(state: State) -> dict:
             [
                 "",
                 (
-                    "Target đã sẵn sàng cho bước "
-                    "lập kế hoạch notebook."
+                    "The target is ready for the "
+                    "notebook planning step."
                 ),
             ]
         )
@@ -154,7 +154,7 @@ def analyze_target_node(state: State) -> dict:
             "messages": [
                 AIMessage(
                     content=(
-                        "Không thể phân tích target: "
+                        "Unable to analyze target: "
                         f"{error_message}"
                     )
                 )

@@ -11,8 +11,8 @@ def create_llm() -> ChatOpenAI:
 
     if not config:
         raise RuntimeError(
-            "QIU chưa được cấu hình. "
-            "Hãy chạy `qiu setup` trước."
+            "QIU has not been configured. "
+            "Please run `qiu setup` first."
         )
 
     provider = config.get(
@@ -29,12 +29,12 @@ def create_llm() -> ChatOpenAI:
 
     if not provider:
         raise RuntimeError(
-            "Config thiếu provider."
+            "Config is missing provider."
         )
 
     if not model:
         raise RuntimeError(
-            "Config thiếu model."
+            "Config is missing model."
         )
 
     api_key = get_api_key(
@@ -43,7 +43,7 @@ def create_llm() -> ChatOpenAI:
 
     if not api_key:
         raise RuntimeError(
-            f"Không tìm thấy API key "
+            f"Could not find API key "
             f"cho provider `{provider}`."
         )
     kwargs = {

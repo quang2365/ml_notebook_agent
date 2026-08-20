@@ -14,8 +14,8 @@ def validate_notebook_plan(
                 "error_type": "invalid_section_count",
                 "location": "sections",
                 "message": (
-                    "Notebook plan phải có từ 8 đến 10 sections. "
-                    f"Hiện tại: {len(sections)}."
+                    "Notebook plan must have 8 to 10 sections. "
+                    f"Current count: {len(sections)}."
                 ),
             }
         )
@@ -29,8 +29,8 @@ def validate_notebook_plan(
                 "error_type": "target_changed",
                 "location": "target_column",
                 "message": (
-                    f"Target phải là `{expected_target}`, "
-                    f"nhưng nhận `{plan.get('target_column')}`."
+                    f"Target must be `{expected_target}`, "
+                    f"but received `{plan.get('target_column')}`."
                 ),
             }
         )
@@ -45,7 +45,7 @@ def validate_notebook_plan(
                 "error_type": "problem_type_changed",
                 "location": "problem_type",
                 "message": (
-                    f"Problem type phải là `{expected_problem_type}`."
+                    f"Problem type must be `{expected_problem_type}`."
                 ),
             }
         )
@@ -65,7 +65,7 @@ def validate_notebook_plan(
                 {
                     "error_type": "missing_section_id",
                     "location": f"sections[{index - 1}]",
-                    "message": "Section không có section_id.",
+                    "message": "Section has no section_id.",
                 }
             )
 
@@ -74,7 +74,7 @@ def validate_notebook_plan(
                 {
                     "error_type": "duplicate_section_id",
                     "location": section_id,
-                    "message": f"`{section_id}` bị trùng.",
+                    "message": f"`{section_id}` is duplicated.",
                 }
             )
 
@@ -96,8 +96,8 @@ def validate_notebook_plan(
                     "error_type": "invalid_task_count",
                     "location": section_id or expected_id,
                     "message": (
-                        "Section phải có từ 1 đến 5 tasks. "
-                        f"Hiện tại: {len(tasks)}."
+                        "Section must have 1 to 5 tasks. "
+                        f"Current count: {len(tasks)}."
                     ),
                 }
             )

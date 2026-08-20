@@ -1,5 +1,3 @@
-"""Offline integration tests for the complete LangGraph workflow."""
-
 from __future__ import annotations
 
 import tempfile
@@ -38,7 +36,7 @@ os.environ["LANGCHAIN_TRACING_V2"] = "false"
 
 
 def make_dataset_summary() -> dict:
-    """Giả lập kết quả inspect_dataset lần đầu."""
+    """Simulate the result of the first inspect_dataset."""
 
     return {
         "file_name": "housing.csv",
@@ -66,7 +64,7 @@ def make_dataset_summary() -> dict:
                 "score": 3,
                 "unique_count": 90,
                 "reasons": [
-                    "Tên cột chứa từ khóa value",
+                    "Column names containing the keyword value",
                 ],
             }
         ],
@@ -88,7 +86,7 @@ def make_dataset_summary() -> dict:
 
 
 def make_target_summary() -> dict:
-    """Giả lập kết quả inspect target lần thứ hai."""
+    """Simulate the result of the second target inspection."""
 
     summary = make_dataset_summary()
 
@@ -111,13 +109,13 @@ def make_target_summary() -> dict:
 def make_initial_state(
     notebook_path: str,
 ) -> dict:
-    """State tối thiểu để chạy toàn graph."""
+    """Minimum state to run the entire graph."""
 
     return {
         "messages": [
             HumanMessage(
                 content=(
-                    "Hãy tạo Machine Learning notebook."
+                    "Create a Machine Learning notebook."
                 )
             )
         ],
@@ -182,7 +180,7 @@ class CompleteGraphIntegrationTests(
             [
                 AIMessage(
                     content=(
-                        "Dataset phù hợp với regression."
+                        "Dataset suitable for regression."
                     )
                 )
             ]
@@ -199,7 +197,7 @@ class CompleteGraphIntegrationTests(
                 PipelineReviewResult(
                     status="valid",
                     summary=(
-                        "Pipeline Machine Learning hợp lệ."
+                        "Valid Machine Learning pipeline."
                     ),
                     errors=[],
                 )
@@ -282,7 +280,7 @@ class CompleteGraphIntegrationTests(
                 }
 
                 # ==============================
-                # PHASE 1: CHẠY ĐẾN INTERRUPT
+                # PHASE 1: RUN TO INTERRUPT
                 # ==============================
 
                 interrupted_state = graph.invoke(
@@ -318,7 +316,7 @@ class CompleteGraphIntegrationTests(
                 )
 
             # ==============================
-            # ASSERT TOÀN PIPELINE
+            # ASSERT ENTIRE PIPELINE
             # ==============================
 
             self.assertEqual(
@@ -407,18 +405,18 @@ class CompleteGraphIntegrationTests(
         )
 
 
-        # trước execution và sau runtime fix.
+        # before execution and after runtime fix.
         review_llm = FakeRunnable(
             [
                 PipelineReviewResult(
                     status="valid",
-                    summary="Pipeline hợp lệ.",
+                    summary="Pipeline is valid.",
                     errors=[],
                 ),
                 PipelineReviewResult(
                     status="valid",
                     summary=(
-                        "Pipeline hợp lệ sau runtime fix."
+                        "Pipeline is valid after runtime fix."
                     ),
                     errors=[],
                 ),
@@ -434,7 +432,7 @@ class CompleteGraphIntegrationTests(
                         "'section_1_fixed'"
                     ),
                     changes=(
-                        "Đã sửa lỗi runtime giả lập."
+                        "Fixed simulated runtime errors."
                     ),
                 )
             ]
@@ -472,8 +470,8 @@ class CompleteGraphIntegrationTests(
             **kwargs,
         ):
             """
-            Lần execute đầu tiên gây lỗi.
-            Lần execute thứ hai thành công.
+            The first execution causes an error.
+            The second execution succeeds.
             """
 
             class FakeNotebookClient:
@@ -489,7 +487,7 @@ class CompleteGraphIntegrationTests(
                         )
 
 
-                        # trước khi raise CellExecutionError.
+                        # before raising CellExecutionError.
                         failed_cell["outputs"] = [
                             nbformat.v4.new_output(
                                 output_type="error",
@@ -518,8 +516,8 @@ class CompleteGraphIntegrationTests(
                             ),
                         )
 
-                    # Lần thứ hai không raise:
-                    # notebook được xem là chạy thành công.
+                    # The second time does not raise:
+                    # notebook is considered to have run successfully.
                     return notebook
 
             client = FakeNotebookClient()
@@ -611,7 +609,7 @@ class CompleteGraphIntegrationTests(
                 )
 
             # ==============================
-            # KIỂM TRA RUNTIME REPAIR
+            # CHECK RUNTIME REPAIR
             # ==============================
 
 

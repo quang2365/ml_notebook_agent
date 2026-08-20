@@ -19,7 +19,7 @@ from validators.dependency_validator import (
 
 
 
-# Số vòng tổng thể sẽ được kiểm soát bởi route.
+# The total number of rounds will be controlled by route.
 runtime_fix_llm = llm.with_structured_output(
     FixedCell,
     method="function_calling",
@@ -27,28 +27,28 @@ runtime_fix_llm = llm.with_structured_output(
 
 
 RUNTIME_FIX_SYSTEM_PROMPT = """
-Bạn là chuyên gia sửa lỗi runtime trong Python Machine Learning
+You are an expert in fixing runtime errors in Python Machine Learning
 Notebook.
 
-Notebook đã vượt qua:
+The notebook has passed:
 
-1. Kiểm tra cấu trúc.
-2. Kiểm tra cú pháp.
-3. Kiểm tra dependency tĩnh.
-4. Đánh giá ngữ nghĩa pipeline.
+1. Structure check.
+2. Syntax check.
+3. Static dependency check.
+4. Pipeline semantic evaluation.
 
-Tuy nhiên, notebook đã phát sinh lỗi khi thực thi thực tế.
+However, the notebook produced an error during actual execution.
 
-Nhiệm vụ của bạn là sửa duy nhất CURRENT CELL dựa trên:
+Your task is to fix only CURRENT CELL based on:
 
 - Runtime exception.
 - Traceback.
-- Source của current cell.
-- Các code cell đã chạy trước đó.
-- Những biến đã được định nghĩa.
-- Target column và problem type.
+- Source of the current cell.
+- Previously executed code cells.
+- Variables that have been defined.
+- Target column and problem type.
 
-CÁC LỖI CÓ THỂ XUẤT HIỆN:
+POSSIBLE ERRORS THAT MAY APPEAR:
 
 1. TypeError.
 2. ValueError.
@@ -58,88 +58,88 @@ CÁC LỖI CÓ THỂ XUẤT HIỆN:
 6. NameError.
 7. ImportError.
 8. FileNotFoundError.
-9. Lỗi pandas DataFrame và Series.
-10. Lỗi NumPy array.
-11. Lỗi scikit-learn pipeline.
-12. Không tương thích shape hoặc dtype.
-13. Lỗi metric và model prediction.
-14. Lỗi feature engineering.
-15. Lỗi truy cập transformer đã fit.
+9. pandas DataFrame and Series errors.
+10. NumPy array errors.
+11. scikit-learn pipeline errors.
+12. Shape or dtype incompatibility.
+13. Metric and model prediction errors.
+14. Feature engineering errors.
+15. Error accessing a fitted transformer.
 
-QUY TẮC BẮT BUỘC:
+MANDATORY RULES:
 
-1. Chỉ sửa CURRENT CELL.
+1. Fix only CURRENT CELL.
 
-2. Không sửa hoặc viết lại toàn bộ notebook.
+2. Do not modify or rewrite the entire notebook.
 
-3. Không tham chiếu đến cell đứng sau CURRENT CELL.
+3. Do not reference any cell after CURRENT CELL.
 
-4. Không thay đổi:
+4. Do not change:
 
    - dataset path;
    - target column;
    - problem type;
-   - train/test split một cách không cần thiết.
+   - train/test split unnecessarily.
 
-5. Không tạo dữ liệu, metric, prediction hoặc model giả.
+5. Do not create fake data, metrics, predictions, or models.
 
-6. Không tạo biến bằng None hoặc giá trị giả chỉ để lỗi biến mất.
+6. Do not create variables with None or dummy values just to make the error disappear.
 
-7. Chỉ sử dụng:
+7. Only use:
 
-   - biến trong AVAILABLE NAMES;
+   - variables in AVAILABLE NAMES;
    - object trong PREVIOUS CODE CELLS;
-   - biến được định nghĩa hợp lệ trong CURRENT CELL.
+   - variables that are validly defined in CURRENT CELL.
 
-8. Nếu lỗi do tên biến không nhất quán, ưu tiên sử dụng biến
-   đã tồn tại thay vì tạo biến mới.
+8. If the error is due to inconsistent variable names, prefer using the variable
+   that already exists instead of creating a new variable.
 
-9. Nếu lỗi liên quan đến dictionary, phải sử dụng đúng key
-   đã được tạo trước đó.
+9. If the error is related to a dictionary, you must use the correct key
+   that was created previously.
 
-10. Nếu lỗi liên quan đến DataFrame và NumPy:
+10. If the error is related to DataFrame and NumPy:
 
-    - Kiểm tra kiểu dữ liệu thực tế đi qua từng transformer.
-    - Không truy cập ndarray bằng tên cột.
-    - FunctionTransformer dùng X["column"] phải nhận DataFrame.
-    - SimpleImputer, StandardScaler và ColumnTransformer có thể
-      trả về NumPy array.
-    - Feature engineering dùng tên cột nên chạy trước transformer
-      làm mất thông tin tên cột.
+    - Check the actual data type passing through each transformer.
+    - Do not access an ndarray by column name.
+    - FunctionTransformer using X["column"] must receive a DataFrame.
+    - SimpleImputer, StandardScaler, and ColumnTransformer can
+      return a NumPy array.
+    - Feature engineering using column names should run before the transformer
+      that loses column name information.
 
-11. Nếu lỗi liên quan đến preprocessing:
+11. If the error is related to preprocessing:
 
-    - Chỉ fit trên training data.
-    - Không fit_transform trên test data.
-    - Train và test phải dùng cùng fitted preprocessor.
-    - Không tạo data leakage.
+    - Fit only on training data.
+    - Do not fit_transform on test data.
+    - Train and test must use the same fitted preprocessor.
+    - Do not create data leakage.
 
-12. Nếu lỗi liên quan đến model:
+12. If the error is related to the model:
 
-    - Model phải được fit trước khi predict.
-    - Sử dụng đúng features và target.
-    - Giữ tên model nhất quán giữa trained_models, predictions
-      và model_results.
+    - The model must be fit before predicting.
+    - Use the correct features and target.
+    - Keep model names consistent among trained_models, predictions
+      and model_results.
 
-13. Nếu lỗi liên quan đến metric:
+13. If the error is related to metrics:
 
-    - Sử dụng y_true và y_pred đúng thứ tự.
-    - Metric phải phù hợp với problem type.
-    - Không sử dụng kết quả của model cuối cho mọi model.
-    - RMSE có thể tính bằng:
+    - Use y_true and y_pred in the correct order.
+    - The metric must match the problem type.
+    - Do not use the final model's results for every model.
+    - RMSE can be calculated using:
       np.sqrt(mean_squared_error(y_true, y_pred)).
 
-14. Nếu lỗi do thư viện chưa được cài đặt, không chèn lệnh pip
-    install vào notebook. Không sửa import thành thư viện không
-    tương đương chỉ để tránh lỗi.
+14. If the error is caused by a library that is not installed, do not insert pip
+    install commands into the notebook. Do not change import to a non-equivalent
+    library just to avoid the error.
 
-15. Thực hiện thay đổi nhỏ nhất có thể.
+15. Make the smallest possible change.
 
-16. Giữ nguyên cell_id.
+16. Keep cell_id unchanged.
 
-17. Source trả về phải là Python thuần.
+17. The returned Source must be pure Python.
 
-18. Không sử dụng Markdown code fence.
+18. Do not use Markdown code fence.
 """
 
 
@@ -147,7 +147,7 @@ def fix_execution_cell_node(
     state: State,
 ) -> dict:
     """
-    Sửa cell gây lỗi trong quá trình thực thi notebook.
+    Fix the cell causing the error during notebook execution.
     """
 
     cells = state.get("notebook_cells") or []
@@ -166,7 +166,7 @@ def fix_execution_cell_node(
 
     if not cells:
         message = (
-            "Không có notebook_cells để sửa lỗi runtime."
+            "There are no notebook_cells to fix runtime errors."
         )
 
         return {
@@ -182,7 +182,7 @@ def fix_execution_cell_node(
 
     if not cell_id:
         message = (
-            "Không xác định được cell_id gây lỗi runtime."
+            "Could not determine the cell_id causing the runtime error."
         )
 
         return {
@@ -201,7 +201,7 @@ def fix_execution_cell_node(
 
     if cell_index is None:
         message = (
-            f"Không tìm thấy cell runtime `{cell_id}` "
+            f"Could not find runtime cell `{cell_id}` "
             "trong notebook_cells."
         )
 
@@ -218,7 +218,7 @@ def fix_execution_cell_node(
 
     if current_cell.get("cell_type") != "code":
         message = (
-            f"Cell `{cell_id}` không phải code cell."
+            f"Cell `{cell_id}` is not a code cell."
         )
 
         return {
@@ -304,7 +304,7 @@ def fix_execution_cell_node(
                 ),
                 HumanMessage(
                     content=(
-                        "Hãy sửa CURRENT CELL dựa trên "
+                        "Please fix CURRENT CELL based on "
                         "runtime context sau:\n\n"
                         + json.dumps(
                             prompt_context,
@@ -324,7 +324,7 @@ def fix_execution_cell_node(
 
         if returned_cell_id != cell_id:
             raise ValueError(
-                "LLM thay đổi cell_id: "
+                "LLM changed cell_id: "
                 f"{cell_id} -> {returned_cell_id}"
             )
 
@@ -357,7 +357,7 @@ def fix_execution_cell_node(
 
         if current_cell_errors:
             raise ValueError(
-                "Bản sửa runtime tạo lỗi dependency: "
+                "The runtime fix produced a dependency error: "
                 f"{current_cell_errors}"
             )
 
@@ -375,7 +375,7 @@ def fix_execution_cell_node(
             "build_error": None,
 
 
-            # khi notebook được build và chạy lại.
+            # when the notebook is built and run again.
             "execution_status": "pending",
             "execution_error": None,
             "execution_fix_attempts": new_attempts,
@@ -385,9 +385,9 @@ def fix_execution_cell_node(
             "messages": [
                 AIMessage(
                     content=(
-                        f"Đã sửa runtime cell `{cell_id}`. "
-                        "Cell sẽ được validate, review, "
-                        "build và thực thi lại."
+                        f"Fixed runtime cell `{cell_id}`. "
+                        "Cell will be validated, reviewed, "
+                        "built and re-executed."
                     )
                 )
             ],
@@ -395,7 +395,7 @@ def fix_execution_cell_node(
 
     except Exception as exc:
         message = (
-            f"Không thể sửa runtime cell "
+            f"Cannot fix runtime cell "
             f"`{cell_id}`: {exc}"
         )
 
@@ -431,7 +431,7 @@ def find_cell_index(
     cells: list[dict],
     cell_id: str,
 ) -> int | None:
-    """Tìm vị trí cell nội bộ bằng cell_id."""
+    """Find the internal cell position using cell_id."""
 
     for index, cell in enumerate(cells):
         if cell.get("cell_id") == cell_id:
@@ -443,7 +443,7 @@ def find_cell_index(
 def normalize_source(
     source: str | list | None,
 ) -> str:
-    """Chuẩn hóa source thành chuỗi Python."""
+    """Normalize source into a Python string."""
 
     if source is None:
         return ""
@@ -455,7 +455,7 @@ def normalize_source(
 
 
 def remove_code_fence(source: str) -> str:
-    """Loại bỏ Markdown fence nếu LLM vẫn trả về."""
+    """Remove Markdown fence if LLM still returns it."""
 
     source = source.strip()
 
@@ -475,8 +475,8 @@ def collect_available_names(
     previous_code_cells: list[dict],
 ) -> list[str]:
     """
-    Thu thập các biến, hàm và import đã được định nghĩa
-    trong những cell đứng trước.
+    Collect the variables, functions, and imports that have been defined
+    in preceding cells.
     """
 
     available_names = set(BUILTIN_NAMES)

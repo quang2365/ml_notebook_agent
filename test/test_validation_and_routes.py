@@ -1,5 +1,3 @@
-"""Tests for deterministic validators and graph routes."""
-
 from __future__ import annotations
 
 import unittest

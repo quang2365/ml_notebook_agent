@@ -1,5 +1,3 @@
-"""Offline tests for nodes that normally call an LLM."""
-
 from __future__ import annotations
 
 import unittest
@@ -173,13 +171,13 @@ class GenerateSectionsOfflineTests(unittest.TestCase):
         second_prompt = fake.calls[1]["input"][1].content
         self.assertIn("PREVIOUS NOTEBOOK CODE:\n[]", first_prompt)
         self.assertIn('dataset_path = \\"./data/housing.csv\\"', second_prompt)
-        self.assertIn("model_results luôn là list[dict]", second_prompt)
+        self.assertIn("model_results must always be list[dict]", second_prompt)
         self.assertIn(
             'pd.DataFrame(model_results).set_index("model")',
             second_prompt,
         )
         self.assertIn(
-            "Không được gán lại model_results thành dict",
+            "Do not reassign model_results to a dict",
             second_prompt,
         )
 
@@ -287,7 +285,7 @@ class FixCellsOfflineTests(unittest.TestCase):
                     "error_type": "undefined_variable",
                     "variable": "best_model",
                     "message": (
-                        "Biến `best_model` được sử dụng trước khi được định nghĩa."
+                        "Variable `best_model` is used before being defined."
                     ),
                 }
             ],
@@ -355,7 +353,7 @@ class FixCellsOfflineTests(unittest.TestCase):
             "section_9_best_residual",
         )
         self.assertIn(
-            "vẫn còn lỗi dependency",
+            "dependency error remains",
             result["fix_cell_failures"][0]["message"],
         )
 

@@ -5,32 +5,32 @@ from pydantic import BaseModel, Field
 
 class NotebookCell(BaseModel):
     cell_id: str = Field(
-        description="Mã duy nhất của cell."
+        description="Unique cell identifier."
     )
 
     section_id: str = Field(
-        description="Section mà cell thuộc về."
+        description="Section containing the cell."
     )
     cell_type: Literal["markdown", "code"] = Field(
-        description="Loại của cell: markdown hoặc code."
+        description="Cell type: markdown or code."
     )
     title: str = Field(
-        description="Tên ngắn mô tả cell."
+        description="Short description of the cell."
     )
 
     source: str = Field(
-        description="Nội dung đầy đủ của cell."
+        description="Complete cell content."
     )
 
     purpose: str = Field(
-        description="Mục đích của cell."
+        description="Purpose of the cell."
     )
 
     expected_output: str | None = Field(
         default=None,
         description=(
-            "Mô tả kết quả dự kiến khi chạy code cell. "
-            "Markdown cell có thể để null."
+            "Description of the expected result when running the code cell. "
+            "Markdown cellss may be null."
         ),
     )
 
@@ -38,13 +38,13 @@ class NotebookCell(BaseModel):
 class GeneratedSection(BaseModel):
     section_id: str = Field(
         description=(
-            "ID của section đang được generate."
+            "ID of the section currently being generated."
         )
     )
 
     cells: list[NotebookCell] = Field(
         description=(
-            "Danh sách các notebook cell "
-            "thuộc section này."
+            "List of notebook cells "
+            "belonging to this section."
         )
     )

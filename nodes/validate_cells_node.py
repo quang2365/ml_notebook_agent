@@ -13,7 +13,7 @@ def validate_cells_node(state: State) -> dict:
     )
     if not cells:
         error_message = (
-            "Không có notebook_cells để kiểm tra."
+            "No notebook_cells are available for validation."
         )
 
         return {
@@ -38,7 +38,7 @@ def validate_cells_node(state: State) -> dict:
         dependency_errors
     )
     # ==========================
-    # CÓ LỖI
+    # ERRORS FOUND
     # ==========================
     if validation_cell_errors:
         message = build_validation_message(
@@ -49,8 +49,8 @@ def validate_cells_node(state: State) -> dict:
             "validation_cell_status": "invalid",
             "validation_cell_errors": validation_cell_errors,
             "error": (
-                f"Phát hiện "
-                f"{len(validation_cell_errors)} lỗi "
+                f"Detected "
+                f"{len(validation_cell_errors)} errors "
                 "trong notebook cells."
             ),
             "messages": [
@@ -59,7 +59,7 @@ def validate_cells_node(state: State) -> dict:
         }
 
     # ==========================
-    # KHÔNG CÓ LỖI
+    # NO ERRORS FOUND
     # ==========================
     code_count = sum(
         cell.get("cell_type") == "code"
@@ -78,11 +78,11 @@ def validate_cells_node(state: State) -> dict:
         "messages": [
             AIMessage(
                 content=(
-                    "Notebook cells đã vượt qua "
-                    "kiểm tra cấu trúc và cú pháp.\n\n"
-                    f"- Tổng cell: {len(cells)}\n"
-                    f"- Code cell: {code_count}\n"
-                    f"- Markdown cell: {markdown_count}\n"
+                    "Notebook cells passed "
+                    "structural and syntax validation.\n\n"
+                    f"- Total cells: {len(cells)}\n"
+                    f"- Code cells: {code_count}\n"
+                    f"- Markdown cells: {markdown_count}\n"
                     "- Syntax errors: 0"
                 )
             )
@@ -96,7 +96,7 @@ def build_validation_message(
     lines = [
         "# Notebook Cell Validation",
         "",
-        f"Phát hiện **{len(errors)} lỗi**.",
+        f"Detected **{len(errors)} errors**.",
         "",
     ]
 

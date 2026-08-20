@@ -10,7 +10,7 @@ def validate_plan_node(state: State) -> dict:
     plan = state.get("notebook_plan")
 
     if not plan:
-        error = "Không có notebook plan để kiểm tra."
+        error = "No notebook plan to validate."
 
         return {
             "plan_validation_status": "invalid",
@@ -40,13 +40,13 @@ def validate_plan_node(state: State) -> dict:
             "plan_validation_status": "invalid",
             "plan_validation_errors": errors,
             "error": (
-                f"Notebook plan có {len(errors)} lỗi."
+                f"Notebook plan has {len(errors)} errors."
             ),
             "messages": [
                 AIMessage(
                     content=(
-                        "Notebook plan chưa hợp lệ. "
-                        f"Phát hiện {len(errors)} lỗi."
+                        "Notebook plan is invalid. "
+                        f"Detected {len(errors)} errors."
                     )
                 )
             ],
@@ -58,7 +58,7 @@ def validate_plan_node(state: State) -> dict:
         "error": None,
         "messages": [
             AIMessage(
-                content="Notebook plan hợp lệ."
+                content="Notebook plan is valid."
             )
         ],
     }

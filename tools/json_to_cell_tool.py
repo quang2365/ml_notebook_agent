@@ -1,5 +1,3 @@
-"""Convert JSON produced by the agent into Jupyter notebook cells."""
-
 from __future__ import annotations
 
 import json
@@ -12,7 +10,6 @@ MAX_NOTEBOOK_CELL_ID_LENGTH = 64
 
 
 def _source_lines(source: str) -> list[str]:
-    """Return source in the format expected by nbformat/Jupyter."""
     if not source:
         return []
 
@@ -23,7 +20,6 @@ def _source_lines(source: str) -> list[str]:
 
 
 def _notebook_cell_id(cell_data: dict[str, Any]) -> str:
-    """Convert agent cell_id to a valid, deterministic nbformat cell id."""
     raw_cell_id = cell_data.get("cell_id")
     if not isinstance(raw_cell_id, str) or not raw_cell_id.strip():
         raise ValueError("Cell JSON must contain a non-empty cell_id.")
@@ -41,15 +37,12 @@ def _notebook_cell_id(cell_data: dict[str, Any]) -> str:
 
 
 def json_object_to_cell(cell_data: dict[str, Any]) -> dict[str, Any]:
-    """Convert one agent cell object to a Jupyter cell dictionary."""
     if not isinstance(cell_data, dict):
         raise TypeError("Cell JSON must be an object.")
 
     cell_type = cell_data.get("cell_type")
     if cell_type not in ALLOWED_CELL_TYPES:
-        raise ValueError(
-            "cell_type must be either 'code' or 'markdown'."
-        )
+        raise ValueError( "cell_type must be either 'code' or 'markdown'." )
 
     source = cell_data.get("source", "")
     if not isinstance(source, str):
@@ -79,7 +72,6 @@ def json_object_to_cell(cell_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def json_string_to_cells(json_string: str) -> list[dict[str, Any]]:
-    """Convert a JSON string containing one cell or a list of cells."""
     try:
         payload = json.loads(json_string)
     except json.JSONDecodeError as exc:
@@ -97,5 +89,4 @@ def json_string_to_cells(json_string: str) -> list[dict[str, Any]]:
 
 
 def notebook_cell_to_json(cell: dict[str, Any]) -> str:
-    """Serialize one Jupyter cell to readable JSON."""
     return json.dumps(cell, ensure_ascii=False, indent=2)

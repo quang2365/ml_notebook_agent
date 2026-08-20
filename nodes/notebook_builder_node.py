@@ -10,7 +10,7 @@ def notebook_builder(state: State) -> dict:
     notebook_cell = state.get("notebook_cells")
     notebook_path = state.get("notebook_path") or "output/test.ipynb"
     if not notebook_cell:
-        error = "rỗng, chưa có cell notebook"
+        error = "empty, no notebook cell"
         return {
 
             "messages": [AIMessage(content=error)],
@@ -31,7 +31,7 @@ def notebook_builder(state: State) -> dict:
         "error": None,
         "messages": [
             AIMessage(
-                content=f"Đã tạo notebook tại `{notebook_path}`."
+                content=f"Created notebook at `{notebook_path}`."
             )
         ],
     }

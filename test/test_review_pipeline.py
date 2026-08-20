@@ -32,7 +32,7 @@ class ReviewPipelineNodeTests(unittest.TestCase):
             [
                 PipelineReviewResult(
                     status="valid",
-                    summary="Pipeline hợp lệ.",
+                    summary="Pipeline is valid.",
                     errors=[],
                 )
             ]
@@ -52,13 +52,13 @@ class ReviewPipelineNodeTests(unittest.TestCase):
             [
                 PipelineReviewResult(
                     status="invalid",
-                    summary="Pipeline có lỗi.",
+                    summary="Pipeline has errors.",
                     errors=[
                         PipelineReviewError(
                             cell_id="section_1_code_1",
                             error_type="pipeline_incompatibility",
-                            message="DataFrame bị chuyển thành ndarray.",
-                            suggestion="Đổi thứ tự transformer.",
+                            message="DataFrame was converted to ndarray.",
+                            suggestion="Change the transformer order.",
                         )
                     ],
                 )
@@ -80,13 +80,13 @@ class ReviewPipelineNodeTests(unittest.TestCase):
             [
                 PipelineReviewResult(
                     status="invalid",
-                    summary="Pipeline có lỗi.",
+                    summary="Pipeline has errors.",
                     errors=[
                         PipelineReviewError(
                             cell_id="missing_cell",
                             error_type="other",
-                            message="Không ánh xạ được cell.",
-                            suggestion="Kiểm tra cell ID.",
+                            message="Unable to map the cell.",
+                            suggestion="Check cell id.",
                         )
                     ],
                 )
@@ -100,7 +100,7 @@ class ReviewPipelineNodeTests(unittest.TestCase):
             result = review_pipeline_node(make_state())
 
         self.assertEqual(result["pipeline_review_status"], "failed")
-        self.assertIn("không tồn tại", result["error"])
+        self.assertIn("does not exist", result["error"])
 
     def test_llm_exception_fails_review(self) -> None:
         fake = FakeRunnable([RuntimeError("API unavailable")])

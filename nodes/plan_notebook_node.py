@@ -24,10 +24,10 @@ def plan_notebook_node(state: State) -> dict:
     if not summary:
         return {
             "notebook_plan": None,
-            "error": "Không tìm thấy summary của dataset.",
+            "error": "Dataset summary was not found.",
             "messages": [
                 AIMessage(
-                    content="Không thể lập kế hoạch notebook."
+                    content="Unable to create the notebook plan."
                 )
             ],
         }
@@ -35,47 +35,47 @@ def plan_notebook_node(state: State) -> dict:
     if not target_analysis:
         return {
             "notebook_plan": None,
-            "error": "Target chưa được phân tích.",
+            "error": "The target has not been analyzed.",
             "messages": [
                 AIMessage(
-                    content="Không thể lập kế hoạch notebook."
+                    content="Unable to create the notebook plan."
                 )
             ],
         }
 
     system_prompt = """
-        Bạn là một Senior Data Scientist chuyên thiết kế
-        kế hoạch Jupyter Notebook cho bài toán Machine Learning.
+        You are a Senior Data Scientist specializing in designing
+        Jupyter Notebook plans for Machine Learning problems.
 
-        Nhiệm vụ của bạn là lập KẾ HOẠCH notebook.
-        KHÔNG viết code hoàn chỉnh.
+        Your task is to create a NOTEBOOK PLAN.
+        DO NOT write complete code.
 
-        Notebook phải ngắn gọn, có cấu trúc rõ ràng
-        và có thể được thực thi tuần tự từ trên xuống dưới.
+        The notebook must be concise, clearly structured
+        and executable sequentially from top to bottom.
 
-        QUY TẮC BẮT BUỘC:
+        MANDATORY RULES:
 
-        1. Notebook phải có từ 8 đến 10 sections.
+        1. The notebook must contain 8 to 10 sections.
 
-        2. section_id phải tuần tự:
+        2. section_id values must be sequential:
         section_1
         section_2
         section_3
         ...
 
-        3. Không được tạo section thừa hoặc chia một
-        nhiệm vụ nhỏ thành quá nhiều section.
+        3. Do not create unnecessary sections or split a
+        small task into too many sections.
 
-        4. Thứ tự pipeline Machine Learning phải hợp lý.
+        4. The Machine Learning pipeline order must be logical.
 
-        5. Dataset phải được load trước khi sử dụng.
+        5. The dataset must be loaded before use.
 
-        6. EDA cơ bản phải xảy ra trước modeling.
+        6. Basic EDA must occur before modeling.
 
-        7. Phải tách features X và target y.
+        7. Features X and target y must be separated.
 
-        8. Train/test split phải xảy ra TRƯỚC mọi bước
-        preprocessing có học tham số từ dữ liệu như:
+        8. The train/test split must occur BEFORE any
+        preprocessing steps that learn parameters from data, such as:
         - imputation
         - scaling
         - encoding
@@ -83,68 +83,68 @@ def plan_notebook_node(state: State) -> dict:
         - dimensionality reduction
         - learned transformation
 
-        9. Preprocessor chỉ được fit trên training set.
+        9. The preprocessor may only be fit on the training set.
 
-        10. Không được fit preprocessing trên toàn bộ
-            dataset trước khi train/test split.
+        10. Do not fit preprocessing on the entire
+            the dataset before the train/test split.
 
-        11. Feature engineering dựa trên công thức cố định
-            có thể được mô tả riêng, nhưng mọi transformation
-            học tham số phải fit trên train.
+        11. Feature engineering based on fixed formulas
+            may be described separately, but every transformation
+            that learns parameters must be fit on the training set.
 
-        12. Phải có một baseline model.
+        12. There must be a baseline model.
 
-        13. Phải có ít nhất hai candidate models để
-            so sánh khi phù hợp với bài toán.
+        13. There must be at least two candidate models to
+            compare when appropriate for the problem.
 
-        14. Các metric phải phù hợp với problem_type.
+        14. Metrics must match the problem_type.
 
-        15. Phải có phần đánh giá và so sánh model.
+        15. There must be a model evaluation and comparison section.
 
-        16. Phải có phần kết luận.
+        16. There must be a conclusion section.
 
-        17. Mỗi section chỉ nên chứa từ 1 đến 5 tasks.
+        17. Each section should contain 1 to 5 tasks.
 
-        18. Không tạo metric hoặc kết quả giả.
+        18. Do not create fake metrics or results.
 
-        19. Không thực thi code.
+        19. Do not execute code.
 
-        20. Không tự thay đổi target_column hoặc
-            problem_type đã được xác nhận.
-        CẤU TRÚC GỢI Ý:
+        20. Do not change the confirmed target_column or
+            problem_type that has been confirmed.
+        SUGGESTED STRUCTURE:
 
         section_1:
-        - Setup môi trường và import thư viện.
+        - Set up the environment and import libraries.
 
         section_2:
-        - Load dataset và kiểm tra cấu trúc cơ bản.
+        - Load the dataset and inspect its basic structure.
 
         section_3:
         - Exploratory Data Analysis.
 
         section_4:
-        - Xác định X/y và train/test split.
+        - Define X/y and perform the train/test split.
 
         section_5:
-        - Preprocessing và feature engineering.
+        - Preprocessing and feature engineering.
 
         section_6:
         - Baseline model.
 
         section_7:
-        - Candidate model thứ nhất.
+        - First candidate model.
 
         section_8:
-        - Candidate model thứ hai.
+        - Second candidate model.
 
         section_9:
-        - Đánh giá, so sánh và phân tích model.
+        - Evaluate, compare, and analyze models.
 
         section_10:
-        - Kết luận và hướng phát triển.
+        - Conclusion and future directions.
 
-        Có thể gộp các section khi phù hợp,
-        nhưng tổng số section phải từ 8 đến 10.
+        Sections may be merged when appropriate,
+        but the total number of sections must be 8 to 10.
         """
 
     analysis_context = (
@@ -153,22 +153,22 @@ def plan_notebook_node(state: State) -> dict:
     )
 
     user_prompt = f"""
-Hãy lập kế hoạch notebook cho bài toán sau.
+Create a notebook plan for the following problem.
 
 Target:
 {target_column}
 
-Loại bài toán:
+Problem type:
 {problem_type}
 
-Thông tin dataset:
+Dataset information:
 {json.dumps(
     analysis_context,
     ensure_ascii=False,
     default=str,
 )}
 
-Phân tích target:
+Target analysis:
 {json.dumps(
     target_analysis,
     ensure_ascii=False,
@@ -199,7 +199,7 @@ Phân tích target:
             }
     except Exception as exc:
         error_message = (
-            f"Không thể lập kế hoạch notebook: {exc}"
+            f"Unable to create the notebook plan: {exc}"
         )
 
         return {
@@ -213,17 +213,17 @@ Phân tích target:
 
 def build_plan_message(plan: dict) -> str:
     lines = [
-        "# Kế hoạch Notebook",
+        "# Notebook Plan",
         "",
         f"## {plan.get('notebook_title')}",
         "",
-        f"**Mục tiêu:** {plan.get('objective')}",
+        f"**Objective:** {plan.get('objective')}",
         "",
         f"**Target:** `{plan.get('target_column')}`",
         "",
-        f"**Loại bài toán:** `{plan.get('problem_type')}`",
+        f"**Problem type:** `{plan.get('problem_type')}`",
         "",
-        "## Các mô hình dự kiến",
+        "## Planned Models",
         "",
     ]
 
@@ -236,7 +236,7 @@ def build_plan_message(plan: dict) -> str:
     lines.extend(
         [
             "",
-            "## Metric đánh giá",
+            "## Evaluation Metrics",
             "",
         ]
     )
@@ -250,7 +250,7 @@ def build_plan_message(plan: dict) -> str:
     lines.extend(
         [
             "",
-            "## Các phần trong notebook",
+            "## Notebook Sections",
             "",
         ]
     )

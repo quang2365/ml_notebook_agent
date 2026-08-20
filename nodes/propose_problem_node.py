@@ -11,7 +11,7 @@ def propose_problem_node(state: State) -> dict:
     if not target_candidates:
 
         error_message = (
-            "Không tìm thấy target candidate trong dataset."
+            "No target candidate was found in the dataset."
         )
         return {
             "problem_proposal": None,
@@ -44,15 +44,15 @@ def propose_problem_node(state: State) -> dict:
     )
 
     message = (
-        "## Đề xuất bài toán Machine Learning\n\n"
-        f"- **Target đề xuất:** `{target_column}`\n"
-        f"- **Loại bài toán:** `{problem_type}`\n"
-        f"- **Số giá trị khác nhau của target:** "
+        "## Machine Learning Problem Proposal\n\n"
+        f"- **Proposed target:** `{target_column}`\n"
+        f"- **Problem type:** `{problem_type}`\n"
+        f"- **Number of unique target values:** "
         f"{unique_count if unique_count is not None else 'unknown'}\n\n"
-        "### Lý do đề xuất\n\n"
+        "### Proposal reasons\n\n"
         f"{reasons_text}\n\n"
-        "> Đây chỉ là đề xuất tự động và cần được "
-        "người dùng xác nhận."
+        "> This is just an automatic suggestion and needs to be "
+        "confirmed by the user."
     )
 
     return {

@@ -2,11 +2,11 @@ from langchain_core.messages import AIMessage,HumanMessage,SystemMessage
 from state import State
 from model.model import llm
 def analyze_dataset_note(state:State) -> dict:
-    # bản phân tích đầy đủ dataset
+    # full dataset analysis
     dataset_summary = state.get("summary")
     if not dataset_summary:
-        return {"error":" Tôi không nhận được bản tóm tắt của Dataset",
-                "messages": [AIMessage(content = "Tôi không nhận được bản tóm tắt của Dataset")]}
+        return {"error":"I did not receive the summary of the Dataset",
+                "messages": [AIMessage(content = "I did not receive the summary of the Dataset")]}
 
 
     analysis_context = (
@@ -14,33 +14,33 @@ def analyze_dataset_note(state:State) -> dict:
         or dataset_summary
     )
     system_prompt = """
-    Bạn là một chuyên gia tóm tắt và phân tích dữ liêu.
-    bạn sẽ được cung cấp các dữ liệu liên quan đến dataset hãy tóm tắt nội dung ấy cho người dùng
-    chỉ trình bày từ các thông tin được cung cấp, không bịa hay suy luận.
+    You are an expert in summarizing and analyzing data.
+    You will be provided with data related to the dataset; summarize that content for the user.
+    Present only the information provided; do not fabricate or infer.
     
-    quy ước chung:
-    Khi trình bày số tiền, hãy phân biệt rõ dấu phân cách hàng nghìn và
-    dấu thập phân. Có thể viết theo đơn vị nghìn USD để tránh nhầm lẫn.
+    General conventions:
+    When presenting monetary amounts, clearly distinguish the thousands separator and
+    the decimal separator. You may write amounts in thousands of USD to avoid confusion.
     
-        Hãy phân tích:
+        Please analyze:
 
-        1. Kích thước và cấu trúc dataset.
-        2. Cột số và cột phân loại.
-        3. Missing value và duplicate.
-        4. Phân phối lệch và outlier.
-        5. Những tương quan đáng chú ý.
-        6. Cột có khả năng là ID hoặc không hữu ích.
-        7. Đề xuất target và loại bài toán Machine Learning.
-        8. Những bước cần thực hiện tiếp theo.
+        1. Dataset size and structure.
+        2. Numeric columns and categorical columns.
+        3. Missing values and duplicates.
+        4. Skewed distributions and outliers.
+        5. Notable correlations.
+        6. Columns that are likely IDs or not useful.
+        7. Propose a target and the type of Machine Learning problem.
+        8. Next steps that need to be taken.
 
-        Quy tắc:
-        - Chỉ sử dụng dữ liệu được cung cấp.
-        - Không khẳng định target nếu người dùng chưa xác nhận.
-        - Outlier theo IQR chỉ là dấu hiệu thống kê, không mặc định là dữ liệu sai.
-        - Tương quan không đồng nghĩa với quan hệ nhân quả.
-        - Trình bày bằng Markdown tiếng Việt
+        Rules:
+        - Only use the provided data.
+        - Do not assert a target unless the user has confirmed it.
+        - Outliers according to IQR are only statistical indicators; do not assume they are incorrect data.
+        - Correlation does not imply causation.
+        - Present using Markdown in Vietnamese.
     """
-    message=f"""Bạn là một Data Scientist. Đây là thông tin dataset:
+    message=f"""You are a Data Scientist. This is the dataset information:
                     {analysis_context}"""
 
     try:
@@ -53,5 +53,5 @@ def analyze_dataset_note(state:State) -> dict:
     except Exception as exc:
         return {
             "error": str(exc),
-            "messages": [AIMessage(content=f"Có lỗi gì đó khi tôi đang cố đọc dataset: {str(exc)}")]
+            "messages": [AIMessage(content=f"An error occurred while I was trying to read the dataset: {str(exc)}")]
         }

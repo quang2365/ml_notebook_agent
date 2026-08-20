@@ -12,8 +12,8 @@ class PrepareGenerationTests(
         self,
     ) -> None:
         """
-        Kiểm tra dữ liệu của lần generation trước
-        được reset khi bắt đầu generation mới.
+        Verify that data from the previous generation
+        is reset when a new generation begins.
         """
 
         state = {
@@ -88,8 +88,8 @@ class PrepareGenerationTests(
         self,
     ) -> None:
         """
-        Không có plan thì generation phải dừng
-        trước khi gọi LLM.
+        Without a plan, generation must stop
+        before calling the LLM.
         """
 
         result = prepare_generation_node({})
@@ -110,8 +110,8 @@ class PrepareGenerationTests(
         self,
     ) -> None:
         """
-        Có plan nhưng sections rỗng cũng không
-        thể bắt đầu generation.
+        A plan with empty sections also cannot
+        start generation.
         """
 
         result = prepare_generation_node(
@@ -128,7 +128,7 @@ class PrepareGenerationTests(
         )
 
         self.assertIn(
-            "không có section",
+            "has no section",
             result["error"],
         )
 

@@ -9,10 +9,6 @@ import pandas as pd
 from langchain_core.tools import tool
 
 
-# =========================================================
-# CÁC HÀM HỖ TRỢ
-# =========================================================
-
 CLASSIFICATION_KEYWORDS = {
     "class", "label", "category", "type", "status", "result",
     "outcome", "default", "fraud", "churn", "approved", "target",
@@ -32,15 +28,11 @@ def infer_problem_type(
     dataframe: pd.DataFrame,
     target_column: str,
 ) -> dict[str, Any]:
-    """
-    Gợi ý loại bài toán từ kiểu dữ liệu, tên cột và số mức giá trị.
 
-    Kết quả chỉ là đề xuất và vẫn cần người dùng xác nhận.
-    """
 
     if target_column not in dataframe.columns:
         raise ValueError(
-            f"Không tìm thấy cột target: {target_column}"
+            f"Target column not found: {target_column}"
         )
 
     target = dataframe[target_column].dropna()
@@ -49,7 +41,7 @@ def infer_problem_type(
         return {
             "problem_type": "unknown",
             "confidence": "low",
-            "reasons": ["Target không có dữ liệu hợp lệ."],
+            "reasons": ["Target has no valid data."],
         }
 
     unique_count = int(target.nunique())
@@ -82,24 +74,21 @@ def infer_problem_type(
 
         return output
 
-    # Cột gần như duy nhất và có tên giống ID.
     if name_tokens & ID_KEYWORDS and unique_ratio >= 0.98:
         return result(
             "unknown",
             "high",
-            "Cột có đặc điểm giống ID.",
+            "Column appears to be an ID.",
         )
 
-    # Boolean hoặc target chỉ có hai giá trị.
     if pd.api.types.is_bool_dtype(target) or unique_count == 2:
         return result(
             "classification",
             "high",
-            "Target chỉ có hai giá trị hoặc có kiểu Boolean.",
+            "Target has only two values or has Boolean type.",
             "binary",
         )
 
-    # Chuỗi và category thường là nhãn phân loại.
     if (
         pd.api.types.is_object_dtype(target)
         or pd.api.types.is_string_dtype(target)
@@ -108,16 +97,15 @@ def infer_problem_type(
         return result(
             "classification",
             "high",
-            "Target có kiểu chuỗi hoặc phân loại.",
+            "Target has string or categorical type.",
             "multiclass",
         )
 
-    # Ngày giờ cần xử lý riêng.
     if pd.api.types.is_datetime64_any_dtype(target):
         return result(
             "unknown",
             "low",
-            "Target có kiểu ngày giờ và cần được xác nhận thêm.",
+            "Target has datetime type and requires further confirmation.",
         )
 
     if pd.api.types.is_numeric_dtype(target):
@@ -130,7 +118,7 @@ def infer_problem_type(
             return result(
                 "unknown",
                 "low",
-                "Không thể chuyển target thành dữ liệu số hợp lệ.",
+                "Target cannot be converted to valid numeric data.",
             )
 
         has_class_keyword = any(
@@ -156,7 +144,7 @@ def infer_problem_type(
             return result(
                 "classification",
                 "high",
-                "Tên target chứa từ khóa thường dùng cho phân loại.",
+                "Target name contains a keyword commonly used for classification.",
                 "multiclass",
             )
 
@@ -168,7 +156,7 @@ def infer_problem_type(
             return result(
                 "classification",
                 "medium",
-                "Target là số nguyên nhưng chỉ có ít mức giá trị.",
+                "Target is integer-valued but has few distinct levels.",
                 "multiclass",
             )
 
@@ -176,27 +164,27 @@ def infer_problem_type(
             return result(
                 "regression",
                 "high",
-                "Tên target biểu diễn một đại lượng liên tục.",
+                "Target name represents a continuous quantity.",
             )
 
         return result(
             "regression",
             "medium",
-            "Target là dữ liệu số với nhiều giá trị khác nhau.",
+            "Target is numeric data with many distinct values.",
         )
 
     return result(
         "unknown",
         "low",
-        "Chưa đủ thông tin để xác định loại bài toán.",
+        "There is not enough information to determine the problem type.",
     )
 
 
 
 def json_safe(value: Any) -> Any:
     """
-    Chuyển dữ liệu pandas/numpy thành kiểu Python
-    có thể serialize sang JSON.
+    Convert pandas/numpy data to Python types
+    that can be serialized to JSON.
     """
 
     if isinstance(value, dict):
@@ -230,9 +218,6 @@ def read_csv_with_encoding(
     file_path: Path,
     delimiter: str,
 ) -> tuple[pd.DataFrame, str]:
-    """
-    Thử đọc CSV bằng một số encoding thông dụng.
-    """
 
     encodings = [
         "utf-8",
@@ -257,16 +242,13 @@ def read_csv_with_encoding(
             last_error = exc
 
     raise ValueError(
-        "Không thể xác định encoding của file CSV."
+        "Unable to determine the encoding of the CSV file."
     ) from last_error
 
 
 def build_column_overview(
     dataframe: pd.DataFrame,
 ) -> dict[str, dict[str, Any]]:
-    """
-    Thống kê tổng quan cho từng cột.
-    """
 
     rows = len(dataframe)
     result: dict[str, dict[str, Any]] = {}
@@ -305,10 +287,6 @@ def build_numeric_profile(
     dataframe: pd.DataFrame,
     numeric_columns: list[str],
 ) -> dict[str, dict[str, Any]]:
-    """
-    Thống kê mô tả, độ lệch và ngoại lệ
-    cho các cột số.
-    """
 
     result: dict[str, dict[str, Any]] = {}
 
@@ -419,7 +397,7 @@ def build_categorical_profile(
     max_categories: int,
 ) -> dict[str, dict[str, Any]]:
     """
-    Thống kê phân bố cho các cột phân loại.
+    Distribution statistics for categorical columns.
     """
 
     result: dict[str, dict[str, Any]] = {}
@@ -535,10 +513,6 @@ def build_top_correlations(
     numeric_columns: list[str],
     max_pairs: int,
 ) -> list[dict[str, Any]]:
-    """
-    Trả về các cặp cột số có tương quan Pearson
-    mạnh nhất theo trị tuyệt đối.
-    """
 
     if len(numeric_columns) < 2:
         return []
@@ -599,11 +573,6 @@ def detect_target_candidates(
     dataframe: pd.DataFrame,
     possible_id_columns: list[str],
 ) -> list[dict[str, Any]]:
-    """
-    Gợi ý target dựa trên tên và đặc điểm cột.
-
-    Đây chỉ là gợi ý, không phải kết luận.
-    """
 
     exact_keywords = {
         "target",
@@ -657,7 +626,7 @@ def detect_target_candidates(
         if normalized_name in exact_keywords:
             score += 5
             reasons.append(
-                "Tên cột trùng từ khóa target."
+                "Column name matches the target keyword."
             )
 
         matched_partial = [
@@ -669,20 +638,20 @@ def detect_target_candidates(
         if matched_partial:
             score += 3
             reasons.append(
-                "Tên cột chứa từ khóa: "
+                "Column name contains the keyword: "
                 + ", ".join(matched_partial)
             )
 
         if index == len(dataframe.columns) - 1:
             score += 1
             reasons.append(
-                "Đây là cột cuối dataset."
+                "This is the last column in the dataset."
             )
 
         if column_name in possible_id_columns:
             score -= 5
             reasons.append(
-                "Cột có đặc điểm giống ID."
+                "Column appears to be an ID."
             )
 
         unique_ratio = (
@@ -735,16 +704,13 @@ def build_target_analysis(
     target_column: str | None,
     max_categories: int,
 ) -> dict[str, Any] | None:
-    """
-    Phân tích target khi người dùng đã xác nhận target.
-    """
 
     if target_column is None:
         return None
 
     if target_column not in dataframe.columns:
         raise ValueError(
-            f"Không tìm thấy target column: "
+            f"Target column not found: "
             f"{target_column}"
         )
 
@@ -764,9 +730,6 @@ def build_target_analysis(
         target_column=target_column,
     )
     problem_type = problem_suggestion["problem_type"]
-
-    # target_analysis cần một nhánh cụ thể để tính thống kê.
-    # Nếu chưa đủ chắc chắn, dùng số mức giá trị làm fallback.
     if problem_type == "unknown":
         problem_type = (
             "classification"
@@ -933,11 +896,6 @@ def build_target_analysis(
 
     return json_safe(result)
 
-
-# =========================================================
-# TOOL CHÍNH
-# =========================================================
-
 @tool
 def inspect_dataset(
     file_path: str,
@@ -948,54 +906,39 @@ def inspect_dataset(
     max_correlation_pairs: int = 15,
     delimiter: str = ",",
 ) -> dict[str, Any]:
-    """
-    Đọc và phân tích tổng quan một file CSV.
-
-    Tool trả về:
-    - kích thước dataset;
-    - kiểu dữ liệu;
-    - missing values;
-    - duplicate rows;
-    - thống kê cột số;
-    - thống kê cột phân loại;
-    - outlier theo IQR;
-    - skewness;
-    - tương quan;
-    - ứng viên target;
-    - phân tích target nếu target_column được cung cấp.
-    """
+    """Inspect a dataset and return a JSON-safe profile."""
 
     path = Path(file_path)
 
     if not path.exists():
         raise FileNotFoundError(
-            f"Không tìm thấy file: {path}"
+            f"Not found file: {path}"
         )
 
     if not path.is_file():
         raise ValueError(
-            f"Đường dẫn không phải file: {path}"
+            f"Path is not a file: {path}"
         )
 
     if path.suffix.lower() != ".csv":
         raise ValueError(
-            "Hiện tại tool chỉ hỗ trợ file CSV."
+            "The tool currently supports only CSV files."
         )
 
     if preview_rows < 0:
         raise ValueError(
-            "preview_rows phải lớn hơn "
-            "hoặc bằng 0."
+            "preview_rows must be greater than "
+            "or equal to zero."
         )
 
     if max_categories <= 0:
         raise ValueError(
-            "max_categories phải lớn hơn 0."
+            "max_categories must be greater than zero."
         )
 
     if max_profile_columns <= 0:
         raise ValueError(
-            "max_profile_columns phải lớn hơn 0."
+            "max_profile_columns must be greater than zero."
         )
 
     try:
@@ -1008,18 +951,18 @@ def inspect_dataset(
 
     except pd.errors.EmptyDataError as exc:
         raise ValueError(
-            "File CSV không chứa dữ liệu."
+            "The CSV file contains no data."
         ) from exc
 
     except pd.errors.ParserError as exc:
         raise ValueError(
-            "Không thể phân tích cấu trúc CSV: "
+            "Unable to analyze CSV structure: "
             f"{exc}"
         ) from exc
 
     if dataframe.empty:
         raise ValueError(
-            "Dataset không có dòng dữ liệu."
+            "The dataset contains no data rows."
         )
 
     rows, columns = dataframe.shape
@@ -1232,7 +1175,7 @@ def inspect_dataset(
                 "type": "missing_values",
                 "severity": "warning",
                 "message": (
-                    "Dataset có giá trị thiếu."
+                    "The dataset contains missing values."
                 ),
                 "columns": (
                     columns_with_missing
@@ -1246,8 +1189,8 @@ def inspect_dataset(
                 "type": "duplicate_rows",
                 "severity": "warning",
                 "message": (
-                    f"Dataset có "
-                    f"{duplicate_rows} dòng trùng."
+                    f"The dataset has "
+                    f"{duplicate_rows} duplicate rows."
                 ),
             }
         )
@@ -1258,7 +1201,7 @@ def inspect_dataset(
                 "type": "constant_columns",
                 "severity": "warning",
                 "message": (
-                    "Có cột chỉ chứa một giá trị."
+                    "A column contains only one value."
                 ),
                 "columns": constant_columns,
             }
@@ -1270,7 +1213,7 @@ def inspect_dataset(
                 "type": "all_missing_columns",
                 "severity": "critical",
                 "message": (
-                    "Có cột bị thiếu toàn bộ."
+                    "A column is entirely missing."
                 ),
                 "columns": all_missing_columns,
             }
@@ -1282,9 +1225,9 @@ def inspect_dataset(
                 "type": "possible_id_columns",
                 "severity": "info",
                 "message": (
-                    "Một số cột có tỷ lệ giá trị "
-                    "duy nhất rất cao và có thể "
-                    "là ID."
+                    "Some columns have a proportion of "
+                    "unique values that is very high and may "
+                    "be an ID."
                 ),
                 "columns": possible_id_columns,
             }
@@ -1296,7 +1239,7 @@ def inspect_dataset(
                 "type": "high_cardinality",
                 "severity": "warning",
                 "message": (
-                    "Có cột phân loại có "
+                    "A categorical column has "
                     "cardinality cao."
                 ),
                 "columns": (
@@ -1321,8 +1264,8 @@ def inspect_dataset(
                 "type": "high_skewness",
                 "severity": "info",
                 "message": (
-                    "Một số cột có phân phối "
-                    "lệch mạnh."
+                    "Some columns have a "
+                    "strongly skewed distribution."
                 ),
                 "columns": high_skew_columns,
             }
@@ -1350,8 +1293,8 @@ def inspect_dataset(
                 "type": "many_iqr_outliers",
                 "severity": "info",
                 "message": (
-                    "Một số cột có ít nhất 5% "
-                    "giá trị nằm ngoài ngưỡng IQR."
+                    "Some columns have at least 5% "
+                    "of values outside the IQR threshold."
                 ),
                 "columns": high_outlier_columns,
             }
@@ -1363,8 +1306,8 @@ def inspect_dataset(
                 "type": "no_obvious_issue",
                 "severity": "info",
                 "message": (
-                    "Chưa phát hiện vấn đề rõ "
-                    "ràng ở bước kiểm tra tổng quan."
+                    "No obvious issue detected "
+                    "during the overall inspection."
                 ),
             }
         )
@@ -1449,7 +1392,6 @@ def inspect_dataset(
     }
 
     result = {
-        # Các key cũ được giữ lại
         "file_name": path.name,
         "rows": rows,
         "columns": columns,
@@ -1466,7 +1408,6 @@ def inspect_dataset(
             categorical_columns
         ),
 
-        # Metadata
         "shape": [rows, columns],
         "total_cells": total_cells,
         "encoding": encoding_used,
@@ -1474,7 +1415,6 @@ def inspect_dataset(
         "file_size_mb": file_size_mb,
         "memory_usage_mb": memory_usage_mb,
 
-        # Missing và duplicate
         "missing_values": missing_values,
         "missing_percentages": (
             missing_percentages
@@ -1490,7 +1430,6 @@ def inspect_dataset(
             duplicate_percentage
         ),
 
-        # Kiểu và chất lượng cột
         "boolean_columns": boolean_columns,
         "datetime_columns": datetime_columns,
         "constant_columns": constant_columns,
@@ -1507,7 +1446,6 @@ def inspect_dataset(
             high_cardinality_columns
         ),
 
-        # Phân tích chi tiết
         "column_overview": column_overview,
         "numeric_profile": numeric_profile,
         "categorical_profile": (
@@ -1517,19 +1455,16 @@ def inspect_dataset(
             top_correlations
         ),
 
-        # Target
         "target_candidates": (
             target_candidates
         ),
         "target_analysis": target_analysis,
 
-        # Cảnh báo và dữ liệu mẫu
         "quality_warnings": (
             quality_warnings
         ),
         "preview": preview,
 
-        # Thông tin profiling
         "profiled_columns": (
             profiled_columns
         ),
@@ -1537,7 +1472,6 @@ def inspect_dataset(
             columns > max_profile_columns
         ),
 
-        # Context rút gọn cho LLM
         "analysis_context": (
             analysis_context
         ),

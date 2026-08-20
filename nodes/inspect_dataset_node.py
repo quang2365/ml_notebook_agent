@@ -8,8 +8,8 @@ def inspect_dataset_note(state:State)-> dict:
     dataset_path = state.get("dataset_path")
     if not dataset_path:
         return{
-            "error":"state chưa nhận đường dẫn dataset",
-            "messages": [AIMessage(content="Tôi chưa nhận được đường dẫn")]
+            "error":"state has not received the dataset path",
+            "messages": [AIMessage(content="I have not received the path")]
         }
     try:
         summary = inspect_dataset.invoke(
@@ -17,27 +17,27 @@ def inspect_dataset_note(state:State)-> dict:
                 "file_path":dataset_path
             })
         message = (
-            "## Đã đọc dataset thành công\n\n"
-            f"- **Tên file:** {summary['file_name']}\n"
-            f"- **Kích thước:** "
-            f"{summary['rows']:,} dòng × "
-            f"{summary['columns']} cột\n"
-            f"- **Cột số:** "
+            "## Dataset read successfully\n\n"
+f"- **File name:** {summary['file_name']}\n"
+f"- **Size:** "
+f"{summary['rows']:,} rows × "
+f"{summary['columns']} columns\n"
+f"- **Numeric columns:** "
             f"{len(summary['numeric_columns'])}\n"
-            f"- **Cột phân loại:** "
+f"- **Categorical columns:** "
             f"{len(summary['categorical_columns'])}\n"
-            f"- **Giá trị thiếu:** "
+f"- **Missing values:** "
             f"{summary['total_missing_values']:,} "
             f"({summary['total_missing_percentage']}%)\n"
-            f"- **Dòng trùng lặp:** "
+f"- **Duplicate rows:** "
             f"{summary['duplicate_rows']:,}\n"
-            f"- **Cột có khả năng là ID:** "
+f"- **Potential ID columns:** "
             f"{len(summary['possible_id_columns'])}\n"
-            f"- **Cột có phân phối lệch mạnh:** "
+f"- **Columns with highly skewed distribution:** "
             f"{len(summary['analysis_context']['data_quality']['quality_warnings'])}"
 )
         return {
-            "messages": [AIMessage(content=f"đây là bản tóm tắt của dataset \n {message}")],
+            "messages": [AIMessage(content=f"this is the summary of the dataset \n {message}")],
             "summary": summary,
             "dataset_path": dataset_path
         }
@@ -45,5 +45,5 @@ def inspect_dataset_note(state:State)-> dict:
         error_messages = str(ect)
         return{
             "error":error_messages,
-            "messages": [AIMessage(content=f"không thể đọc file lỗi là do: {error_messages}")]
+            "messages": [AIMessage(content=f"Could not read the file; the error is due to: {error_messages}")]
         }
