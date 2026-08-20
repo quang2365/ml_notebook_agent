@@ -73,6 +73,8 @@ inspect_data -> analyze_data -> propose_problem -> review_problem
                                              +----> validate_cells
 ~~~
 
+![QIU main graph](docs/main_graph.png)
+
 The graph is compiled with LangGraph's InMemorySaver. The TUI keeps the same graph configuration and thread_id when it resumes after a user decision.
 
 ### Human-in-the-Loop review
