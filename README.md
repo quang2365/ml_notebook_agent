@@ -468,12 +468,13 @@ A reference directory structure:
 ```text
 ml_notebook_agent/
 │
-├── main.py
 ├── graph.py
 ├── state.py
 │
 ├── model/
-│   └── model.py
+│   ├── capabilities.py
+│   ├── model.py
+│   └── structured_output.py
 │
 ├── nodes/
 │   ├── inspect_dataset_node.py
@@ -482,7 +483,8 @@ ml_notebook_agent/
 │   ├── review_problem_node.py
 │   ├── analyze_target_node.py
 │   ├── plan_notebook_node.py
-│   ├── generate_cells_node.py
+│   ├── prepare_generation_node.py
+│   ├── generate_section_node.py
 │   ├── validate_cells_node.py
 │   └── fix_cells_node.py
 │
@@ -600,10 +602,10 @@ Linux/macOS:
 source .venv/bin/activate
 ```
 
-Install dependencies:
+Install the project and its dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 Create the `.env` file:
@@ -616,10 +618,11 @@ NVIDIA_API_KEY=your_api_key_here
 
 ## Running the Project
 
-Run:
+Configure the provider and API key, then start QIU:
 
 ```bash
-python main.py
+qiu setup
+qiu
 ```
 
 The graph will run up to the Human Review step. After the user confirms the target and problem type, the graph is resumed and continues:
