@@ -1,14 +1,28 @@
 
 import json
+import re
+from datetime import datetime
 from pathlib import Path
 from state import State
 from langchain_core.messages import AIMessage
 from tools.json_to_cell_tool import json_object_to_cell
 
+def build_notebook_path(state: State) -> str:
+    """Create a unique output path from the dataset, target, and timestamp."""
+    dataset_path = state.get("dataset_path") or "dataset"
+    dataset_name = Path(dataset_path).stem or "dataset"
+    target = state.get("target_column") or "notebook"
+    safe_name = re.sub(
+        r"[^A-Za-z0-9_-]+",
+        "_",
+        f"{dataset_name}_{target}",
+    ).strip("_") or "notebook"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"output/{safe_name}_{timestamp}.ipynb"
 
 def notebook_builder(state: State) -> dict:
     notebook_cell = state.get("notebook_cells")
-    notebook_path = state.get("notebook_path") or "output/test.ipynb"
+    notebook_path = state.get("notebook_path") or build_notebook_path(state)
     if not notebook_cell:
         error = "empty, no notebook cell"
         return {

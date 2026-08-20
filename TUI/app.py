@@ -13,6 +13,7 @@ from textual.widgets import (
 from config.providers import PROVIDERS
 from TUI.datasetpicker import DatasetPickerScreen
 from TUI.review_problem import ReviewProblemScreen
+from TUI.workflow_progress import WorkflowDashboard, NODE_LABELS
 from graph import build_graph
 from state import create_initial_state
 from langgraph.types import Command
@@ -107,6 +108,7 @@ class QiuApp(App[None]):
             }
         }
         self.workflow_running = False
+        self.workflow_state: dict = {}
         self.graph = build_graph()
     def compose(self) -> ComposeResult:
 
@@ -149,6 +151,7 @@ class QiuApp(App[None]):
                 id="dataset-path",
             ),
 
+            WorkflowDashboard(),
             Button(
                 "Select Dataset",
                 id="select-dataset",
@@ -187,10 +190,9 @@ class QiuApp(App[None]):
             self.workflow_running = True
 
             self.show_processing(
-                "Processing dataset...\n"
-                "QIU is inspecting and "
-                "analyzing your data."
+                "Starting workflow..."
             )
+            self.start_workflow()
     def open_dataset_picker( self, ) -> None:
         self.push_screen(
             DatasetPickerScreen(),
@@ -291,42 +293,6 @@ class QiuApp(App[None]):
             severity="error",
             timeout=10,
         )
-    def handle_graph_result( self, result: dict, ) -> None:
-
-        interrupts = result.get( "__interrupt__" )
-        if interrupts:
-            self.hide_processing(
-                enable_start=False
-            )
-
-            self.handle_interrupt(
-                interrupts
-            )
-            return
-        self.workflow_running = False
-
-        self.hide_processing()
-
-        approval_status = result.get(
-            "approval_status"
-        )
-
-        if approval_status == "rejected":
-            self.notify(
-                (
-                    "Machine Learning problem "
-                    "proposal was rejected."
-                ),
-                title="QIU",
-                severity="warning",
-            )
-            return
-
-        self.notify(
-            "Workflow completed.",
-            title="QIU",
-            severity="information",
-        )
     def handle_interrupt( self, interrupts, ) -> None:
         interrupt_item = interrupts[0]
         self.workflow_running = False
@@ -347,53 +313,152 @@ class QiuApp(App[None]):
         self.resume_workflow(
             decision
         )
-    @work( thread=True, exclusive=True, )
-    def start_workflow( self, ) -> None:
-
-        if not self.dataset_path:
-            return
-
-        initial_state = ( create_initial_state( self.dataset_path ) )
-
-        try:
-            result = self.graph.invoke(
-                initial_state,
-                config=self.graph_config,
-            )
-
-        except Exception as exc:
-
-            self.call_from_thread(
-                self.show_graph_error,
-                str(exc),
-            )
-
-            return
-
-        self.call_from_thread(
-            self.handle_graph_result,
-            result,
+    def update_workflow_ui(
+        self,
+        node_name: str,
+        state: dict,
+    ) -> None:
+        dashboard = self.query_one(
+            WorkflowDashboard,
         )
-    @work( thread=True, exclusive=True, )
-    def resume_workflow( self, decision: dict, ) -> None:
-        try:
-            result = self.graph.invoke(
-                Command(
-                    resume=decision
-                ),
-                config=self.graph_config,
+        dashboard.update_node(node_name)
+        dashboard.update_summary(state)
+        self.query_one(
+            "#processing-status",
+            Static,
+        ).update(
+            NODE_LABELS.get(node_name, node_name)
+            if node_name != "__interrupt__"
+            else "Waiting for confirmation..."
+        )
+
+    def handle_node_update(
+        self,
+        node_name: str,
+        delta: dict,
+    ) -> None:
+        self.workflow_state.update(delta or {})
+        self.update_workflow_ui(
+            node_name,
+            self.workflow_state,
+        )
+
+    def handle_graph_interrupt(
+        self,
+        interrupts,
+    ) -> None:
+        self.workflow_running = False
+        self.query_one(
+            WorkflowDashboard,
+        ).mark_waiting_for_review()
+        self.query_one(
+            "#processing-status",
+            Static,
+        ).update("Waiting for your confirmation...")
+        self.handle_interrupt(interrupts)
+
+    def handle_graph_result(
+        self,
+        result: dict,
+    ) -> None:
+        self.workflow_running = False
+        self.workflow_state.update(result or {})
+        dashboard = self.query_one(
+            WorkflowDashboard,
+        )
+        dashboard.mark_finished(self.workflow_state)
+        self.hide_processing()
+
+        approval_status = self.workflow_state.get(
+            "approval_status"
+        )
+        if approval_status == "rejected":
+            self.notify(
+                "The Machine Learning problem proposal was rejected.",
+                title="QIU",
+                severity="warning",
             )
+            return
 
+        if self.workflow_state.get("execution_status") == "success":
+            self.notify(
+                "Notebook built and executed successfully.",
+                title="QIU",
+                severity="information",
+            )
+            return
+
+        if self.workflow_state.get("error"):
+            self.notify(
+                self.workflow_state["error"],
+                title="Workflow stopped",
+                severity="error",
+                timeout=10,
+            )
+            return
+
+        self.notify(
+            "Workflow completed.",
+            title="QIU",
+            severity="information",
+        )
+
+    def _stream_graph(
+        self,
+        input_value,
+    ) -> None:
+        try:
+            stream_state = dict(self.workflow_state)
+            for update in self.graph.stream(
+                input_value,
+                config=self.graph_config,
+                stream_mode="updates",
+            ):
+                if "__interrupt__" in update:
+                    self.call_from_thread(
+                        self.handle_graph_interrupt,
+                        update["__interrupt__"],
+                    )
+                    return
+
+                for node_name, delta in update.items():
+                    stream_state.update(delta or {})
+                    self.call_from_thread(
+                        self.handle_node_update,
+                        node_name,
+                        delta or {},
+                    )
+
+            self.call_from_thread(
+                self.handle_graph_result,
+                stream_state,
+            )
         except Exception as exc:
-
             self.call_from_thread(
                 self.show_graph_error,
                 str(exc),
             )
 
+    @work(thread=True, exclusive=True)
+    def start_workflow(self) -> None:
+        if not self.dataset_path:
+            self.show_graph_error("Please select a dataset first.")
             return
 
-        self.call_from_thread(
-            self.handle_graph_result,
-            result,
+        self.workflow_state = create_initial_state(
+            self.dataset_path
+        )
+        self.query_one(
+            WorkflowDashboard,
+        ).reset()
+        self._stream_graph(self.workflow_state)
+
+    @work(thread=True, exclusive=True)
+    def resume_workflow(
+        self,
+        decision: dict,
+    ) -> None:
+        self.workflow_running = True
+        self._stream_graph(
+            Command(resume=decision)
         )
