@@ -1,743 +1,459 @@
-# ML Notebook Agent
+# QIU — AI Machine Learning Notebook Agent
 
-**ML Notebook Agent** is a project that builds an **AI Agent capable of automatically analyzing datasets and creating Jupyter Notebooks for Machine Learning problems**.
+QIU is an AI-assisted application that analyzes a dataset, proposes a Machine Learning problem, generates a Jupyter Notebook section by section, validates the generated code, repairs detected errors, and executes the resulting notebook.
 
-The system is developed according to a workflow architecture using **LangGraph**, in which each stage of the Machine Learning process is separated into independent nodes such as data inspection, dataset analysis, problem proposal, target confirmation, notebook planning, code generation, error checking, and automatic error correction.
+QIU is built as a workflow instead of one large LLM request. LangGraph controls the workflow, Python performs deterministic checks, and the user remains in control of important decisions such as the target column and problem type.
 
-The goal of the project is to build an agent that can receive an input dataset and gradually create a Machine Learning notebook with a clear, consistent structure and the ability to be verified before execution.
+## What QIU does
 
----
+Given a tabular dataset, QIU can:
 
-## Project Goal
+- inspect the dataset with Python;
+- ask an LLM to analyze the dataset;
+- propose a target column and problem type;
+- ask the user to approve, edit, or reject the proposal;
+- analyze the confirmed target;
+- create and validate an 8–10 section notebook plan;
+- generate notebook sections one at a time;
+- validate cell structure, syntax, and static dependencies;
+- review the complete Machine Learning pipeline semantically;
+- repair invalid cells when possible;
+- build and execute a timestamped .ipynb file.
 
-ML Notebook Agent aims to automate the process:
+The application currently provides a Textual terminal user interface (TUI) and a qiu command-line entry point.
 
-```text
-Dataset
-   ↓
-Analyze data
-   ↓
-Propose Machine Learning problem
-   ↓
-User confirms Target / Problem Type
-   ↓
-Analyze Target
-   ↓
-Plan Notebook
-   ↓
-Generate each section
-   ↓
-Merge Notebook Cells
-   ↓
-Static Validation
-   ↓
-Dependency Validation
-   ↓
-Automatic Repair
-   ↓
-Jupyter Notebook
-```
+## Current status
 
-Instead of asking the LLM to generate the entire notebook in a single call, the system splits the notebook into multiple **small sections** and generates each section separately. This design reduces the risk of timeout, reduces the size of each request, and makes errors easier to control.
+The main workflow, first Human-in-the-Loop review, section generation, static validation, semantic pipeline review, notebook building, notebook execution, and runtime repair routing are implemented.
 
----
+QIU still depends on an external LLM API. Generated code is not guaranteed to be correct for every dataset; validators and repair nodes reduce common errors but do not replace human review.
 
-## Overall Architecture
+## Architecture
 
-Current main workflow:
+### Main graph
 
-```text
+~~~text
 START
-  ↓
-inspect_data
-  ↓
-analyze_data
-  ↓
-propose_problem
-  ↓
-review_problem
-  ├── rejected ─────────────→ END
-  │
-  └── approved
-        ↓
-  analyze_target
-        ↓
-  plan_notebook
-        ↓
-  generate_cells
-        ↓
-  route_after_generation
-        ├── failed ─────────→ END
-        │
-        └── success
-              ↓
-        validate_cells
-              ↓
-        route_after_validation
-          ├── valid ────────→ END
-          │
-          ├── invalid
-          │      ↓
-          │   fix_cells
-          │      ↓
-          └──── validate_cells
-```
+  |
+  v
+inspect_data -> analyze_data -> propose_problem -> review_problem
+                                                    |
+                         reject --------------------+----> END
+                                                    | approve/edit
+                                                    v
+                                              analyze_target
+                                                    |
+                                              plan_notebook
+                                                    |
+                                          validate_plan_node
+                                             |          |
+                                      valid    |          | invalid
+                                             v          v
+                                      prepare_generation  fix_plan_node
+                                             |          |
+                                             v          +----> validate_plan_node
+                                      generate_section
+                                             |
+                                  retry/continue until complete
+                                             v
+                                      validate_cells
+                                             |          |
+                                      valid    |          | invalid
+                                             v          v
+                                      review_pipeline  fix_cells
+                                             |          |
+                                      valid    |          +----> validate_cells
+                                             v
+                                      notebook_builder
+                                             |
+                                      execute_notebook
+                                             |
+                            runtime error -> fix_execution_cell
+                                             |
+                                             +----> validate_cells
+~~~
 
-The workflow is managed by **LangGraph StateGraph** and uses a **checkpointer** to support Human-in-the-Loop.
+The graph is compiled with LangGraph's InMemorySaver. The TUI keeps the same graph configuration and thread_id when it resumes after a user decision.
 
----
+### Human-in-the-Loop review
 
-## Main Components
+When QIU reaches review_problem, the graph calls LangGraph's interrupt(). The TUI provides three actions:
 
-### 1. Dataset Inspection
+- Approve — accept the proposed target and problem type.
+- Edit — change the target column or choose regression/classification.
+- Reject — stop the workflow.
 
-The `inspect_data` node is responsible for reading the dataset and collecting basic information such as:
+The decision is sent back with:
 
-- the number of rows and columns;
-- column names;
-- data types;
-- numeric columns;
-- categorical columns;
-- missing values;
-- possible ID columns;
-- necessary overview information for the downstream nodes.
-
-### 2. Dataset Analysis with LLM
-
-The `analyze_data` node uses an LLM to analyze the dataset information that has been collected. This result is used as context for determining the appropriate Machine Learning problem.
-
-### 3. Problem Proposal
-
-The `propose_problem` node automatically proposes:
-
-- `target_column`;
-- `problem_type`;
-- the reason for the proposal;
-- the number of distinct values of the target;
-- the suitability level of the candidate.
-
-Example:
-
-```json
-{
-  "target_column": "median_house_value",
-  "problem_type": "regression",
-  "candidate_score": 3,
-  "unique_count": 3842,
-  "reasons": [
-    "Column name containing keyword: value"
-  ]
-}
-```
-
-### 4. Human-in-the-Loop
-
-The system does not automatically accept the target proposed by the AI.
-
-The `review_problem` node uses LangGraph's `interrupt()` to request user confirmation. The user can approve, edit, or reject the proposal.
-
-The graph is resumed by:
-
-```python
+~~~python
 Command(resume=decision)
-```
+~~~
 
-using the same `thread_id`.
+The same thread_id must be used to resume the graph correctly.
 
----
+## Notebook generation
 
-## Notebook Planner
+QIU generates sections separately instead of asking the LLM to generate the entire notebook in one response:
 
-After the target is confirmed, the system creates a `NotebookPlan`.
-
-The notebook is currently limited to about **8–10 sections** to avoid generating an overly long notebook and to reduce the number of requests to the LLM.
-
-A typical notebook structure:
-
-```text
-section_1   Setup
-section_2   Data Loading
-section_3   Exploratory Data Analysis
-section_4   Train/Test Split
-section_5   Preprocessing
-section_6   Baseline Model
-section_7   Candidate Model 1
-section_8   Candidate Model 2
-section_9   Model Evaluation
-section_10  Conclusion
-```
-
-The planner must ensure a proper Machine Learning order, especially:
-
-```text
-Train/Test Split
-        ↓
-Fit Preprocessing on Train
-        ↓
-Model Training
-        ↓
-Evaluation
-```
-
-to limit the risk of **data leakage**.
-
----
-
-## Per-Section Notebook Generation
-
-One of the main points of the project is not to generate the entire notebook with a single request.
-
-Instead:
-
-```text
+~~~text
 NotebookPlan
-    ↓
-section_1 → LLM
-section_2 → LLM
-section_3 → LLM
-...
-section_N → LLM
-    ↓
-Merge
-    ↓
-notebook_cells
-```
+    |
+    +--> section_1 --> save to state
+    +--> section_2 --> save to state
+    +--> section_3 --> save to state
+    +--> ...
+    +--> section_n --> save to state
+~~~
 
-Each section is generated independently using structured output.
+prepare_generation initializes section-generation state once. generate_section processes one section at a time while preserving cells already stored in state["notebook_cells"].
 
-Example of a notebook cell:
+A generated cell has this general shape:
 
-```json
+~~~json
 {
   "cell_id": "section_4_code_1",
   "section_id": "section_4",
   "cell_type": "code",
-  "title": "Train/Test Split",
+  "title": "Train/test split",
   "source": "X_train, X_test, y_train, y_test = ...",
-  "purpose": "Split data into train and test",
+  "purpose": "Split the features and target",
   "expected_output": null
 }
-```
+~~~
 
----
+Only code-cell context from previous sections is sent to later section-generation calls. This keeps context smaller while preserving variable continuity.
 
-## Variable Contract
+### Variable contract
 
-Because the sections are generated by multiple independent LLM calls, the project uses a **Variable Contract** to maintain continuity between sections.
+The generator is instructed to preserve common variables such as:
 
-Some standard variables:
-
-```python
+~~~python
 df
-
 target_column
-
 X
 y
-
 X_train
 X_test
 y_train
 y_test
-
 preprocessor
+trained_models
+predictions
+model_results
+RANDOM_STATE
+~~~
 
-trained_models = {}
-predictions = {}
-model_results = []
+The exact variables depend on the dataset and notebook plan. The contract is a consistency guide, not a guarantee that every variable appears in every notebook.
 
-RANDOM_STATE = 42
-```
+## Validation and repair
 
-The agent is instructed not to rename the standard variables to other names such as:
+### Notebook plan validation
 
-```text
-train_X
-X_training
-housing_df
-X_train_data
-```
+The plan validator checks that the plan contains 8–10 sections, section IDs follow section_1, section_2, and so on, IDs are unique and ordered, every section has 1–5 tasks, and the target/problem type are unchanged.
 
-This helps reduce dependency errors between sections.
+Invalid plans are sent to fix_plan_node with the old plan and the collected errors.
 
----
+### Cell and dependency validation
 
-## Structured Output
+The deterministic cell validator checks required fields, duplicate IDs, valid cell types (markdown or code), non-empty string sources, code fences inside code cells, and Python syntax errors.
 
-Important LLM outputs are defined using **Pydantic models**.
+The dependency validator uses Python's ast module to process code cells in execution order. It tracks imports, variables, functions, and classes to detect common errors such as using a variable before it has been defined.
 
-Example:
+Static validation cannot prove that a library is installed or that a model receives data with a compatible runtime shape.
 
-```python
-class NotebookCell(BaseModel):
-    cell_id: str
-    section_id: str
-    cell_type: Literal["markdown", "code"]
-    title: str
-    source: str
-    purpose: str
-    expected_output: str | None
-```
+### Semantic pipeline review
 
-Using structured output helps control format better than asking the LLM to return free-form JSON.
+After deterministic cell validation succeeds, review_pipeline sends the dataset context, problem definition, notebook plan, and all code cells to an LLM. It focuses on data leakage, train/test preprocessing, pandas/NumPy compatibility, variable consistency, model and metric usage, target consistency, and model comparison logic.
 
----
+Only code cells are sent to this reviewer to reduce context size and token usage.
 
-## Static Cell Validation
+### Runtime repair
 
-After merging all sections, the cells are passed to the validator.
+After building, QIU executes the notebook with nbclient. If execution fails and the failing code cell can be identified, fix_execution_cell receives the traceback, current cell, previous code cells, and available variable names.
 
-The validator currently checks for errors such as:
+The node makes a minimal repair and sends the notebook back through validation, pipeline review, building, and execution. The current execution repair limit is four attempts.
 
-- missing `cell_id`;
-- duplicate `cell_id`;
-- sai `cell_type`;
-- source is not a string;
-- Markdown code fence trong Python cell;
-- Python syntax error;
-- missing dataset path;
-- missing confirmed target.
+## Model providers and structured output
 
-Example:
+Provider and model choices are defined in config/providers.py. The current provider list includes OpenAI, Anthropic, Google Gemini, Groq, OpenRouter, Mistral, Together AI, NVIDIA NIM, Cerebras, Fireworks AI, DeepSeek, xAI, Cohere, and Perplexity.
 
-```python
-compile(
-    source,
-    filename=cell_id,
-    mode="exec",
-)
-```
+QIU uses a model capability registry and a unified structured-output gateway:
 
-is used to check Python syntax without needing to execute the notebook.
+~~~text
+Provider + model
+        |
+Model capability profile
+        |
+Function calling / JSON mode / prompt parser
+        |
+JSON extraction
+        |
+Pydantic validation
+~~~
 
----
+Supported OpenAI-compatible profiles can use function calling. DeepSeek V4 profiles use prompt-based JSON generation because they do not use tool choice or native structured output in this application. DeepSeek thinking is disabled by the model runtime profile.
 
-## Dependency Validation with AST
+Unknown provider/model combinations fall back to the prompt-parser strategy.
 
-Correct syntax does not mean the notebook can run.
+## Installation from Git
 
-Example:
+### Requirements
 
-```python
-model.fit(
-    X_train_processed,
-    y_train,
-)
-```
+- Python 3.11 or newer.
+- Python 3.11–3.13 are recommended for the current dependency set.
+- An API key for one supported LLM provider.
+- A terminal that supports the Textual TUI.
 
-still compiles successfully even though `X_train_processed` has never been created.
+Python 3.14 may work for some dependencies, but it is not the recommended release target until every dependency is confirmed to support it.
 
-Therefore, the project uses Python's `ast` to analyze code in notebook order.
+### Windows PowerShell
 
-The dependency validator tracks:
+~~~powershell
+git clone https://github.com/quang2365/ml_notebook_agent.git
+Set-Location ml_notebook_agent
 
-```text
-defined variables
-used variables
-imports
-functions
-classes
-```
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-and detects errors such as:
+python -m pip install --upgrade pip
+python -m pip install .
+~~~
 
-```json
-{
-  "cell_id": "section_6_code_2",
-  "error_type": "undefined_variable",
-  "variable": "X_train_processed",
-  "message": "Variable `X_train_processed` is used before it is defined or imported."
-}
-```
+If PowerShell blocks activation, call the venv executable directly:
 
----
+~~~powershell
+.\.venv\Scripts\qiu.exe setup
+.\.venv\Scripts\qiu.exe
+~~~
 
-## Automatic Cell Repair
+### Linux/macOS
 
-When the validator detects an error:
-
-```text
-validate_cells
-      ↓
-invalid
-      ↓
-fix_cells
-      ↓
-validate_cells
-```
-
-`fix_cells` fixes each cell instead of regenerating the entire notebook.
-
-The system currently supports repairing error groups such as:
-
-```text
-syntax_error
-undefined_variable
-```
-
-The fixer can use:
-
-- validation errors;
-- variable contract;
-- previous code context;
-- available variable names;
-- source of the current cell.
-
-The goal is to keep changes as minimal as possible and not create dummy variables just to make the validator pass.
-
----
-
-## Retry and Rate Limit Handling
-
-Generating each section creates many small requests to the LLM.
-
-The project has a dedicated retry for each section:
-
-```text
-section_1 ✅
-section_2 ✅
-section_3 ❌
-          ↓
-      retry section_3
-          ↓
-section_3 ✅
-```
-
-For the `429` rate-limit error, the system uses exponential backoff and has pauses between sections to reduce request frequency.
-
----
-
-## LLM Provider
-
-The current version uses the model through NVIDIA NIM with an OpenAI-compatible API.
-
-Example configuration:
-
-```python
-from langchain_openai import ChatOpenAI
-
-llm = ChatOpenAI(
-    model="minimaxai/minimax-m3",
-    base_url="https://integrate.api.nvidia.com/v1",
-    api_key=os.getenv("NVIDIA_API_KEY"),
-    temperature=0,
-)
-```
-
-The API key is stored in `.env`:
-
-```env
-NVIDIA_API_KEY=your_api_key_here
-```
-
-Do not commit `.env` to the repository.
-
----
-
-## Technologies Used
-
-Main technologies:
-
-```text
-Python
-LangChain
-LangGraph
-Pydantic
-Python AST
-Jupyter Notebook
-NVIDIA NIM
-MiniMax M3
-```
-
-The Machine Learning libraries that the notebook agent can use depending on the dataset and notebook plan, for example:
-
-```text
-pandas
-numpy
-scikit-learn
-matplotlib
-xgboost
-```
-
----
-
-## Project Structure
-
-A reference directory structure:
-
-```text
-ml_notebook_agent/
-│
-├── graph.py
-├── state.py
-│
-├── model/
-│   ├── capabilities.py
-│   ├── model.py
-│   └── structured_output.py
-│
-├── nodes/
-│   ├── inspect_dataset_node.py
-│   ├── analyze_dataset_node.py
-│   ├── propose_problem_node.py
-│   ├── review_problem_node.py
-│   ├── analyze_target_node.py
-│   ├── plan_notebook_node.py
-│   ├── prepare_generation_node.py
-│   ├── generate_section_node.py
-│   ├── validate_cells_node.py
-│   └── fix_cells_node.py
-│
-├── route/
-│   ├── route_after_review.py
-│   ├── route_after_generate.py
-│   └── route_after_validation.py
-│
-├── schemas/
-│   ├── notebook_plan_schema.py
-│   ├── notebook_cell_schema.py
-│   └── fixed_cell_schema.py
-│
-├── validators/
-│   ├── __init__.py
-│   └── dependency_validator.py
-│
-├── config/
-│   ├── __init__.py
-│   └── notebook_contract.py
-│
-├── tools/
-├── data/
-├── .env
-├── .gitignore
-└── README.md
-```
-
-The actual structure may change during development.
-
----
-
-## LangGraph State
-
-A part of the current state:
-
-```python
-class State(TypedDict):
-    messages: Annotated[
-        list[BaseMessage],
-        add_messages,
-    ]
-
-    dataset_path: str | None
-
-    summary: dict | None
-    summary_llm: str | None
-
-    problem_proposal: dict | None
-
-    target_column: str | None
-    problem_type: Literal[
-        "regression",
-        "classification",
-    ] | None
-
-    approval_status: Literal[
-        "pending",
-        "approved",
-        "rejected",
-    ] | None
-
-    target_analysis: dict | None
-
-    notebook_plan: dict | None
-    notebook_cells: list[dict] | None
-
-    section_generation_status: Literal[
-        "pending",
-        "success",
-        "failed",
-    ] | None
-
-    validation_cell_status: Literal[
-        "pending",
-        "valid",
-        "invalid",
-    ] | None
-
-    validation_errors: list[dict] | None
-
-    fix_attempts: int
-    fixed_cell_ids: list[str] | None
-    fix_failures: list[dict] | None
-
-    error: str | None
-```
-
----
-
-## Installation
-
-Clone repository:
-
-```bash
-git clone <repository-url>
+~~~bash
+git clone https://github.com/quang2365/ml_notebook_agent.git
 cd ml_notebook_agent
-```
 
-Create a virtual environment:
-
-```bash
-python -m venv .venv
-```
-
-Windows:
-
-```bash
-.venv\Scripts\activate
-```
-
-Linux/macOS:
-
-```bash
+python3.11 -m venv .venv
 source .venv/bin/activate
-```
 
-Install the project and its dependencies:
+python -m pip install --upgrade pip
+python -m pip install .
+~~~
 
-```bash
-pip install -e .
-```
+### Development installation
 
-Create the `.env` file:
+For development and testing:
 
-```env
-NVIDIA_API_KEY=your_api_key_here
-```
+~~~bash
+python -m pip install -e ".[dev]"
+~~~
 
----
+Editable installation means that changes in the cloned source are immediately used by the qiu command.
 
-## Running the Project
+## First-time configuration
 
-Configure the provider and API key, then start QIU:
+Run the interactive setup:
 
-```bash
+~~~bash
+qiu setup
+~~~
+
+The setup flow asks for the provider, model, API key, and confirmation. The provider/model configuration is saved under ~/.qiu/config.json.
+
+The API key is stored in the operating system keyring under the qiu service. API keys are not written to the Git repository.
+
+An optional .env file can provide a key before setup:
+
+~~~env
+NVIDIA_API_KEY=your_nvidia_key
+DEEPSEEK_API_KEY=your_deepseek_key
+~~~
+
+Do not commit .env; it is ignored by Git.
+
+## Running QIU
+
+After configuration:
+
+~~~bash
+qiu
+~~~
+
+The TUI displays the selected provider and model, dataset selection, current workflow node, generated section count, repair counts, validation status, pipeline review status, notebook output path, and execution status.
+
+Select a dataset, press Start, and wait for the review screen. After approving or editing the proposal, QIU resumes the same graph session.
+
+## CLI commands
+
+~~~text
+qiu                  Start the TUI
+qiu setup            Configure provider, model, and API key
+qiu change-config    Choose a saved configuration
+qiu rm-config        Remove the saved configuration file
+qiu version          Print the QIU version
+qiu message -m ...  Send a simple message through the configured model
+~~~
+
+The message command is a basic connectivity check; it does not run the notebook workflow.
+
+## Output files
+
+The notebook builder creates a unique path using the dataset name, target column, and timestamp:
+
+~~~text
+output/<dataset>_<target>_<timestamp>.ipynb
+~~~
+
+For example: output/housing_median_house_value_20260821_143000.ipynb.
+
+The notebook is written before execution and updated with execution outputs after a successful run. The output directory is created automatically.
+
+## Testing
+
+The test suite is designed to run offline. LLM-dependent tests use fake model responses instead of making API requests.
+
+Run all tests:
+
+~~~bash
+python -m unittest discover -s test -p "test_*.py" -v
+~~~
+
+The suite covers model profiles, structured-output parsing, offline LLM nodes, section generation, notebook building, static validation, pipeline review, repair routing, notebook execution, runtime repair, and full graph integration.
+
+To avoid creating Python bytecode during a clean run on PowerShell:
+
+~~~powershell
+$env:PYTHONDONTWRITEBYTECODE = "1"
+python -m unittest discover -s test -p "test_*.py"
+~~~
+
+## Building a distributable package
+
+The project uses pyproject.toml and setuptools.
+
+~~~bash
+python -m pip install -e ".[dev]"
+python -m build
+~~~
+
+Artifacts are written to dist/:
+
+~~~text
+dist/qiu-<version>-py3-none-any.whl
+dist/qiu-<version>.tar.gz
+~~~
+
+Install a wheel on another machine:
+
+~~~bash
+python -m pip install qiu-<version>-py3-none-any.whl
 qiu setup
 qiu
-```
+~~~
 
-The graph will run up to the Human Review step. After the user confirms the target and problem type, the graph is resumed and continues:
+The package does not contain API keys, user configuration, datasets, generated notebooks, or the local virtual environment.
 
-```text
-analyze_target
-→ plan_notebook
-→ generate_cells
-→ validate_cells
-→ fix_cells if needed
-```
+## Project structure
 
----
+~~~text
+ml_notebook_agent/
+├── graph.py                         # LangGraph workflow
+├── state.py                         # Shared state and initial state
+├── pyproject.toml                   # Package metadata and dependencies
+├── README.md
+├── cli/                             # qiu commands
+├── TUI/                             # Textual screens and dashboard
+├── config/                          # providers and persisted config
+├── security/                        # OS keyring access
+├── model/                           # model runtime and structured gateway
+├── nodes/                           # workflow nodes
+├── route/                           # conditional routers
+├── schemas/                         # Pydantic schemas
+├── validators/                      # deterministic validators
+├── tools/                           # dataset and cell helpers
+├── test/                            # offline and integration tests
+├── data/                            # local datasets, not packaged
+└── output/                          # generated notebooks, not packaged
+~~~
 
-## Example Result
+## Important state fields
 
-A successful run may return:
+| Group | Important fields |
+| --- | --- |
+| Dataset | dataset_path, summary, summary_llm |
+| Human review | problem_proposal, target_column, problem_type, approval_status, user_feedback |
+| Plan | notebook_plan, plan_validation_status, plan_validation_errors, fix_plan_attempts |
+| Generation | notebook_cells, section_generation_status, current_section_index, generated_section_ids, section_retry_attempts |
+| Cell validation | validation_cell_status, validation_cell_errors, fix_cell_attempts, fixed_cell_ids, fix_cell_failures |
+| Pipeline review | pipeline_review_status, pipeline_review_errors, pipeline_fix_attempts |
+| Build | notebook_path, build_status, build_error |
+| Execution | execution_status, execution_error, execution_attempts, execution_fix_attempts |
+| Global | messages, error |
 
-```text
-Target              : median_house_value
-Problem Type        : regression
-Generation Status   : success
-Notebook Cells      : 39
-Validation Status   : valid
-Validation Errors   : 0
-Fix Attempts        : 0
-```
+The plan, cell, pipeline, and execution counters are separate so that one repair loop does not consume another loop's retry budget.
 
----
+## Troubleshooting
 
-## Development Status
+### qiu is not recognized
 
-### Implemented
+Activate the virtual environment or call its executable directly:
 
-- [x] Dataset inspection
-- [x] Dataset analysis using LLM
-- [x] Problem proposal
-- [x] Target confirmation with Human-in-the-Loop
-- [x] Target analysis
-- [x] Notebook planner
-- [x] Per-section notebook generation
-- [x] Structured output
-- [x] Generation routing
-- [x] Retry for each section
-- [x] Rate-limit backoff
-- [x] Variable contract
-- [x] Static syntax validation
-- [x] AST dependency validator
-- [x] Basic repair loop
+~~~powershell
+.\.venv\Scripts\Activate.ps1
+qiu
+~~~
 
-### In Development
+### QIU says it is not configured
 
-- [ ] Finalize dependency-aware cell repair
-- [ ] Notebook Builder `.ipynb`
-- [ ] Notebook Executor
-- [ ] Runtime error detection
-- [ ] Runtime debugger / repair loop
-- [ ] Semantic Machine Learning validation
-- [ ] Advanced data leakage checks
-- [ ] RAG for Machine Learning knowledge
-- [ ] Multi-agent architecture
+Run qiu setup.
 
----
+### API key not found
 
-## Roadmap
+Run qiu setup again and enter the key for the selected provider. The key is local to the current user and machine because it is stored in the OS keyring.
 
-```text
-Notebook Cells
-      ↓
-Dependency Validation
-      ↓
-Dependency Repair
-      ↓
-Notebook Builder
-      ↓
-.ipynb
-      ↓
-Notebook Executor
-      ↓
-Runtime Error
-      ↓
-Debugger Agent
-      ↓
-Repair
-      ↓
-Execute Again
-```
+### DeepSeek returns tool_choice or response_format errors
 
+Check that the provider is deepseek and the model name is correct. DeepSeek V4 profiles use prompt-parser JSON output and disable thinking/tool choice in the runtime.
 
-## Design Principles
+### The workflow stops after validation
 
-**Human control** — AI proposes the problem, but the user decides the final target.
+Inspect pipeline_review_status, pipeline_review_errors, error, and notebook_path in the TUI summary. A semantic error is routed to fix_cells; an LLM or routing failure ends the graph and is shown as a workflow error.
 
-**Small LLM calls** — Generate the notebook section by section instead of one large request.
+### The notebook fails during execution
 
-**Structured output** — Use Pydantic to constrain the LLM's output.
+Open the generated .ipynb and inspect the failing cell and traceback. QIU can attempt a runtime repair only when nbclient identifies a code cell. Missing third-party libraries or dataset-specific assumptions may require manual changes.
 
-**Deterministic validation** — Errors that can be checked with Python are checked with Python instead of handing everything over to the LLM.
+## Security notes
 
-**Repair instead of regenerate** — When a cell fails, prioritize fixing that cell rather than regenerating the entire notebook.
+- Never commit .env or API keys.
+- API keys are stored with the operating-system keyring.
+- User configuration is stored under ~/.qiu.
+- Generated notebooks may contain dataset paths and model outputs; review them before sharing.
+- Generated Python code should be reviewed before use with sensitive data.
 
-**Machine Learning safety** — The workflow attempts to mitigate data leakage, out-of-order preprocessing, unintended target changes, fake metrics, undefined variables, and inconsistent code between sections.
+## Design principles
 
+- Human control: the user confirms the target and problem type.
+- Small LLM requests: sections are generated independently to control context size and rate limits.
+- Structured output: model responses are parsed and validated with Pydantic.
+- Deterministic checks first: Python checks syntax and basic dependencies before semantic review.
+- Repair instead of full regeneration: the workflow attempts minimal cell-level repairs.
+- Explicit state: each repair loop has its own status, errors, and attempt counter.
+- No secrets in source: credentials are stored outside the repository.
 
----
+## Known limitations
 
-## Author
+- QIU requires network access to the selected LLM provider.
+- LLM responses can still be incomplete or incorrect.
+- AST dependency validation cannot prove runtime compatibility.
+- Semantic pipeline review is probabilistic and may miss a problem or report a false positive.
+- Notebook execution depends on the local Python environment and installed packages.
+- The current checkpointer is in-memory and intended for the active application session.
+- A standalone .exe installer is not currently provided.
 
-The project is built with the goal of researching and practicing the following topics:
+## License
 
-- AI Agent;
-- LangChain;
-- LangGraph;
-- Human-in-the-Loop;
-- Automated Machine Learning Workflow;
-- Code Generation;
-- Static Analysis;
-- AI-assisted Debugging.
+No license file has been added yet. Add an explicit license before distributing QIU publicly.
+
+## Learning goals
+
+QIU is also a practical project for studying Python packaging, LangChain, LangGraph, Human-in-the-Loop workflows, structured LLM output, static Python analysis, Jupyter notebook generation, execution, and AI-assisted debugging.
