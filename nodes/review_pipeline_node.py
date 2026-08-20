@@ -7,14 +7,14 @@ from langchain_core.messages import (
 )
 
 from model.model import llm
+from model.structured_output import build_structured_llm, invoke_structured
 from schemas.pipeline_review_schema import (
     PipelineReviewResult,
 )
 from state import State
 
-review_pipeline_llm = llm.with_structured_output(
+review_pipeline_llm = build_structured_llm(llm,
     PipelineReviewResult,
-    method="function_calling",
 )
 
 
@@ -191,7 +191,7 @@ def review_pipeline_node(state: State) -> dict:
     }
 
     try:
-        result = review_pipeline_llm.invoke(
+        result = invoke_structured(review_pipeline_llm, llm, PipelineReviewResult,
             [
                 SystemMessage(
                     content=(

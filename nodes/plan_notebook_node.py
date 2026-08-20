@@ -5,14 +5,25 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from validators.plan_validator import validate_notebook_plan
 
 from model.model import llm
+from model.structured_output import (
+    build_structured_llm,
+    invoke_structured,
+)
 from schemas.notebook_plan_schema import NotebookPlan
 from state import State
 
 
-structured_llm = llm.with_structured_output(
-    NotebookPlan,
-    method="function_calling",
-)
+structured_llm = build_structured_llm(llm, NotebookPlan)
+
+
+def _invoke_plan(messages: list) -> NotebookPlan:
+    return invoke_structured(
+        runnable=structured_llm,
+        llm=llm,
+        schema=NotebookPlan,
+        messages=messages,
+    )
+
 
 
 def plan_notebook_node(state: State) -> dict:
@@ -168,6 +179,7 @@ Dataset information:
     default=str,
 )}
 
+Return data matching the NotebookPlan schema. Do not include explanations outside the requested structured output.
 Target analysis:
 {json.dumps(
     target_analysis,
@@ -177,7 +189,7 @@ Target analysis:
 """
 
     try:
-        plan = structured_llm.invoke(
+        plan = _invoke_plan(
             [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt),

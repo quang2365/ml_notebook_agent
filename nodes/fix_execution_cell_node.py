@@ -9,6 +9,7 @@ from langchain_core.messages import (
 )
 
 from model.model import llm
+from model.structured_output import build_structured_llm, invoke_structured
 from schemas.fixed_cell_schema import FixedCell
 from state import State
 from validators.dependency_validator import (
@@ -20,9 +21,8 @@ from validators.dependency_validator import (
 
 
 # The total number of rounds will be controlled by route.
-runtime_fix_llm = llm.with_structured_output(
+runtime_fix_llm = build_structured_llm(llm,
     FixedCell,
-    method="function_calling",
 )
 
 
@@ -295,7 +295,7 @@ def fix_execution_cell_node(
     }
 
     try:
-        result = runtime_fix_llm.invoke(
+        result = invoke_structured(runtime_fix_llm, llm, FixedCell,
             [
                 SystemMessage(
                     content=(

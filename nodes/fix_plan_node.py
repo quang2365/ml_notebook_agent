@@ -7,13 +7,13 @@ from langchain_core.messages import (
 )
 
 from model.model import llm
+from model.structured_output import build_structured_llm, invoke_structured
 from schemas.notebook_plan_schema import NotebookPlan
 from state import State
 
 
-fix_plan_llm = llm.with_structured_output(
+fix_plan_llm = build_structured_llm(llm,
     NotebookPlan,
-    method="function_calling",
 )
 
 
@@ -72,7 +72,7 @@ Rules:
 """
 
     try:
-        fixed_plan = fix_plan_llm.invoke(
+        fixed_plan = invoke_structured(fix_plan_llm, llm, NotebookPlan,
             [
                 SystemMessage(
                     content=(

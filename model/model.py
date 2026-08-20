@@ -1,12 +1,24 @@
+from dataclasses import dataclass
+from typing import Any
+
 from langchain_openai import ChatOpenAI
 
 from config.managers import load_config
+from model.capabilities import ModelProfile, profile_from_config
 from security.api_key_store import get_api_key
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def create_llm() -> ChatOpenAI:
+@dataclass(frozen=True)
+class ModelRuntime:
+    """The configured LLM and its provider capability profile."""
+
+    llm: Any
+    profile: ModelProfile
+
+
+def create_model_runtime() -> ModelRuntime:
     config = load_config()
 
     if not config:
@@ -46,7 +58,9 @@ def create_llm() -> ChatOpenAI:
             f"Could not find API key "
             f"cho provider `{provider}`."
         )
-    kwargs = {
+    profile = profile_from_config(config)
+
+    kwargs: dict[str, Any] = {
         "model": model,
         "api_key": api_key,
     }
@@ -54,7 +68,27 @@ def create_llm() -> ChatOpenAI:
         kwargs["base_url"] = (
             base_url
         )
-    return ChatOpenAI(
-        **kwargs
+    if profile.thinking_enabled is not None:
+        kwargs["extra_body"] = {
+            "thinking": {
+                "type": (
+                    "enabled"
+                    if profile.thinking_enabled
+                    else "disabled"
+                ),
+            },
+        }
+
+    return ModelRuntime(
+        llm=ChatOpenAI(**kwargs),
+        profile=profile,
     )
-llm = create_llm()
+
+
+def create_llm() -> ChatOpenAI:
+    return create_model_runtime().llm
+
+
+runtime = create_model_runtime()
+llm = runtime.llm
+model_profile = runtime.profile

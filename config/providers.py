@@ -140,6 +140,8 @@ PROVIDERS = {
         "base_url": "https://api.deepseek.com/v1",
         "api_key_env": "DEEPSEEK_API_KEY",
         "models": [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro",
             "deepseek-chat",
             "deepseek-reasoner",
             "deepseek-coder",

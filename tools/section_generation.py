@@ -4,13 +4,13 @@ import time
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from model.model import llm
+from model.structured_output import build_structured_llm, invoke_structured
 from schemas.notebook_cell_schema import GeneratedSection
 from state import State
 
 
-section_llm = llm.with_structured_output(
+section_llm = build_structured_llm(llm,
     GeneratedSection,
-    method="function_calling",
 )
 
 
@@ -117,7 +117,7 @@ VARIABLE CONTRACT:
 
     for attempt in range(1, MAX_SECTION_RETRIES + 1):
         try:
-            generated_section = section_llm.invoke(
+            generated_section = invoke_structured(section_llm, llm, GeneratedSection,
                 [
                     SystemMessage(content=SECTION_SYSTEM_PROMPT),
                     HumanMessage(content=user_prompt),

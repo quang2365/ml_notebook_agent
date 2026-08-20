@@ -34,6 +34,35 @@ class ModelSelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "qiu setup"):
             create_llm()
 
+    @patch("model.model.ChatOpenAI")
+    @patch("model.model.get_api_key", return_value="test-key")
+    @patch(
+        "model.model.load_config",
+        return_value={
+            "provider": "deepseek",
+            "model": "deepseek-v4-flash",
+            "base_url": "https://api.deepseek.com/v1",
+        },
+    )
+    def test_deepseek_disables_thinking_mode(
+        self,
+        _mock_config,
+        _mock_key,
+        mock_chat_openai,
+    ) -> None:
+        create_llm()
+
+        mock_chat_openai.assert_called_once_with(
+            model="deepseek-v4-flash",
+            api_key="test-key",
+            base_url="https://api.deepseek.com/v1",
+            extra_body={
+                "thinking": {
+                    "type": "disabled",
+                },
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
