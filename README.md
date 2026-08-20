@@ -32,9 +32,6 @@ QIU still depends on an external LLM API. Generated code is not guaranteed to be
 
 ### Main graph
 
-~~~text
-
-
 ![QIU main graph](docs/main_graph.png)
 
 The graph is compiled with LangGraph's InMemorySaver. The TUI keeps the same graph configuration and thread_id when it resumes after a user decision.
