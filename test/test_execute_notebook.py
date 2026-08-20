@@ -225,7 +225,7 @@ class ExecutionRouteTests(unittest.TestCase):
                     "execution_error": {
                         "cell_id": "section_1_code_1",
                     },
-                    "execution_fix_attempts": 2,
+                    "execution_fix_attempts": 4,
                 }
             ),
             "failed",

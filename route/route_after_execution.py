@@ -1,7 +1,7 @@
 from state import State
 
 
-MAX_EXECUTION_FIX_ATTEMPTS = 2
+MAX_EXECUTION_FIX_ATTEMPTS = 4
 
 
 def route_after_execution(state: State,) -> str:
