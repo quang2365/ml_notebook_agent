@@ -33,45 +33,7 @@ QIU still depends on an external LLM API. Generated code is not guaranteed to be
 ### Main graph
 
 ~~~text
-START
-  |
-  v
-inspect_data -> analyze_data -> propose_problem -> review_problem
-                                                    |
-                         reject --------------------+----> END
-                                                    | approve/edit
-                                                    v
-                                              analyze_target
-                                                    |
-                                              plan_notebook
-                                                    |
-                                          validate_plan_node
-                                             |          |
-                                      valid    |          | invalid
-                                             v          v
-                                      prepare_generation  fix_plan_node
-                                             |          |
-                                             v          +----> validate_plan_node
-                                      generate_section
-                                             |
-                                  retry/continue until complete
-                                             v
-                                      validate_cells
-                                             |          |
-                                      valid    |          | invalid
-                                             v          v
-                                      review_pipeline  fix_cells
-                                             |          |
-                                      valid    |          +----> validate_cells
-                                             v
-                                      notebook_builder
-                                             |
-                                      execute_notebook
-                                             |
-                            runtime error -> fix_execution_cell
-                                             |
-                                             +----> validate_cells
-~~~
+
 
 ![QIU main graph](docs/main_graph.png)
 
