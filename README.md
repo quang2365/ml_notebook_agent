@@ -229,7 +229,6 @@ NVIDIA_API_KEY=your_nvidia_key
 DEEPSEEK_API_KEY=your_deepseek_key
 ~~~
 
-Do not commit .env; it is ignored by Git.
 
 ## Running QIU
 
